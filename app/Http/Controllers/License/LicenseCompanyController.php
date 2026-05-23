@@ -23,6 +23,7 @@ class LicenseCompanyController extends Controller
     {
         $licenses = LicenseCompany::with('company')
             ->withCount('activeInstallations')
+            ->withCount(['installations as total_installations_count'])
             ->latest()->paginate(20);
 
         return view('license.companies.index', compact('licenses'));
@@ -344,5 +345,34 @@ class LicenseCompanyController extends Controller
         $ids = Hashids::decode($hash);
         abort_if(empty($ids), 404);
         return LicenseCompany::findOrFail($ids[0]);
+    }
+
+    /**
+     * Soft delete a license.
+     * Only allowed if license has no active installations.
+     */
+    public function destroy(string $hash): RedirectResponse
+    {
+        $license = $this->findOrFail($hash);
+
+        if ($license->activeInstallations()->count() > 0) {
+            return back()->withErrors([
+                'error' => 'Tidak bisa menghapus lisensi yang masih memiliki instalasi aktif. Revoke semua instalasi terlebih dahulu.',
+            ]);
+        }
+
+        LicenseLogsAudit::record('deleted', 'license_company', $license->id, [
+            'previous' => [
+                'company'    => $license->company?->name,
+                'label'      => $license->label,
+                'status'     => $license->status,
+                'expires_at' => $license->expires_at?->toDateString(),
+            ],
+        ]);
+
+        $license->delete(); // soft delete
+
+        return redirect()->route('license.companies.index')
+            ->with('success', 'Lisensi berhasil dihapus.');
     }
 }

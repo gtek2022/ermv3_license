@@ -14,19 +14,54 @@
     <div class="card-body" style="padding:0;">
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Company</th><th>Label</th><th>Status</th><th>Apps</th><th>Installations</th><th>Expires</th><th>Created</th><th></th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Company</th>
+                        <th>Label</th>
+                        <th>Status</th>
+                        <th>Apps</th>
+                        <th>Activated</th>
+                        <th>Installations</th>
+                        <th>Expires</th>
+                        <th>Created</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     @forelse($licenses as $lic)
                     @php
-                        $badgeMap = ['active'=>'badge-success','suspended'=>'badge-warning','cancelled'=>'badge-danger','expired'=>'badge-danger'];
-                        $badge = $badgeMap[$lic->status] ?? 'badge-secondary';
+                        $badgeMap  = ['active'=>'badge-success','suspended'=>'badge-warning','cancelled'=>'badge-danger','expired'=>'badge-danger'];
+                        $badge     = $badgeMap[$lic->status] ?? 'badge-secondary';
+                        $activated = $lic->total_installations_count > 0;
+                        $hash      = Hashids::encode($lic->id);
                     @endphp
                     <tr>
                         <td style="font-weight:600;">{{ $lic->company?->name ?? '—' }}</td>
                         <td style="font-size:.78rem;color:#64748b;">{{ $lic->label ?? '—' }}</td>
                         <td><span class="badge {{ $badge }}">{{ $lic->status }}</span></td>
                         <td style="text-align:center;">{{ $lic->licenseApps?->count() ?? 0 }}</td>
-                        <td style="text-align:center;">{{ $lic->active_installations_count }}</td>
+
+                        {{-- Activated column --}}
+                        <td style="text-align:center;">
+                            @if($activated)
+                                <span class="badge badge-success" title="Sudah pernah diaktifkan di {{ $lic->total_installations_count }} instalasi">
+                                    ✓ Ya
+                                </span>
+                            @else
+                                <span class="badge badge-secondary" title="Belum pernah diaktifkan di client manapun">
+                                    Belum
+                                </span>
+                            @endif
+                        </td>
+
+                        <td style="text-align:center;">
+                            @if($lic->active_installations_count > 0)
+                                <span class="badge badge-info">{{ $lic->active_installations_count }} aktif</span>
+                            @else
+                                <span style="color:#94a3b8;font-size:.75rem;">0</span>
+                            @endif
+                        </td>
+
                         <td>
                             @if($lic->expires_at)
                                 <span class="{{ $lic->expires_at->isPast() ? 'badge badge-danger' : ($lic->expires_at->diffInDays(now()) <= 30 ? 'badge badge-warning' : '') }}" style="font-size:.72rem;">
@@ -36,13 +71,25 @@
                                 <span style="color:#94a3b8;">∞</span>
                             @endif
                         </td>
+
                         <td style="font-size:.72rem;color:#94a3b8;">{{ $lic->created_at->format('d M Y') }}</td>
+
                         <td>
-                            <a href="{{ route('license.companies.show', Hashids::encode($lic->id)) }}" class="btn btn-secondary btn-sm">View</a>
+                            <div style="display:flex;gap:.35rem;align-items:center;">
+                                <a href="{{ route('license.companies.show', $hash) }}" class="btn btn-secondary btn-sm">View</a>
+                                <form method="POST" action="{{ route('license.companies.destroy', $hash) }}"
+                                    data-confirm="Hapus lisensi ini? Data akan disimpan tapi tidak aktif lagi.{{ $lic->active_installations_count > 0 ? ' ⚠ Masih ada ' . $lic->active_installations_count . ' instalasi aktif.' : '' }}"
+                                    data-confirm-type="{{ $lic->active_installations_count > 0 ? 'warning' : 'danger' }}"
+                                    data-confirm-title="Hapus Lisensi"
+                                    data-confirm-ok="Ya, Hapus">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:2rem;">No licenses yet.</td></tr>
+                    <tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:2rem;">No licenses yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
