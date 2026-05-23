@@ -110,168 +110,7 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-function confirmRegenerateKey() {
-    GModal.confirm({
-        type: 'danger',
-        title: 'Generate Kunci Baru',
-        message: 'Generate kunci baru? <strong>Kunci lama tidak berlaku lagi</strong> dan ERMv3 harus diaktifkan ulang dengan kunci baru.',
-        confirmText: 'Ya, Generate',
-        cancelText: 'Batal',
-        onConfirm: function() {
-            document.getElementById('regenerateKeyForm').submit();
-        }
-    });
-}
-
-function retrieveKey(hash) {
-    var btn = document.getElementById('retrieveBtn');
-    var result = document.getElementById('retrieveResult');
-    btn.disabled = true;
-    btn.textContent = 'Memuat...';
-
-    fetch('/licenses/' + hash + '/retrieve-key', {
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
-                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-    })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.textContent = 'Tampilkan Kunci';
-        result.style.display = 'block';
-        if (data.success) {
-            // Show in modal for better UX
-            GModal.alert({
-                type: 'success',
-                title: 'Kunci Lisensi',
-                message: '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0;">'
-                    + '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.35rem;">Kunci Lisensi Aplikasi:</div>'
-                    + '<div style="font-family:monospace;font-size:.95rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
-                    + '</div>'
-                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Salin kunci ini sekarang dan simpan di tempat aman.</p>',
-                confirmText: 'Tutup',
-            });
-            result.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.5rem .75rem;font-size:.72rem;color:#166534;">✅ Kunci berhasil dipulihkan — lihat di modal.</div>';
-        } else {
-            GToast.danger(data.message);
-            result.style.display = 'none';
-        }
-    })
-    .catch(() => {
-        btn.disabled = false;
-        btn.textContent = 'Tampilkan Kunci';
-        GToast.danger('Gagal menghubungi server.');
-    });
-}
-
-function retrieveFLKLic(featureId, appHash) {
-    var btn = event.target;
-    btn.disabled = true; btn.textContent = '...';
-
-    fetch('/master/apps/' + appHash + '/features/' + featureId + '/retrieve-key', {
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
-                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-    })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false; btn.textContent = 'Lihat FLK';
-        if (data.success) {
-            GModal.alert({
-                type: 'info',
-                title: 'Feature License Key (FLK)',
-                message: '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0;">'
-                    + '<div style="font-size:.68rem;color:#1e40af;font-weight:700;margin-bottom:.35rem;">Feature License Key:</div>'
-                    + '<div style="font-family:monospace;font-size:.9rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
-                    + '</div>'
-                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Berikan kunci ini ke client untuk aktivasi fitur di ERMv3.</p>',
-                confirmText: 'Tutup',
-            });
-        } else {
-            GToast.danger(data.message);
-        }
-    })
-    .catch(() => { btn.disabled = false; btn.textContent = 'Lihat FLK'; GToast.danger('Gagal menghubungi server.'); });
-}
-
-function showLicensePublicKey(hash) {
-    fetch(window.location.origin + '/licenses/' + hash + '/public-key', {
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
-                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (!res.success) { GToast.danger(res.message || 'Gagal.'); return; }
-        var d = res.data;
-        if (!d.has_key) {
-            GModal.alert({
-                type: 'warning',
-                title: 'Belum Ada Signing Key',
-                message: '<p>' + d.message + '</p>'
-                    + '<p style="margin-top:.5rem;font-size:.78rem;color:#64748b;">Buka <strong>Master → Companies → ' + res.company + '</strong> untuk generate signing key.</p>',
-                confirmText: 'OK',
-            });
-            return;
-        }
-
-        // Build per-app snippet tabs
-        var snippetHtml = '';
-        var appCodes = Object.keys(d.app_snippets || {});
-
-        if (appCodes.length > 1) {
-            snippetHtml += '<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem;">';
-            appCodes.forEach(function(code, i) {
-                snippetHtml += '<button onclick="switchSnippetTabLic(this, \'' + code + '\')" '
-                    + 'style="padding:.2rem .6rem;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;border:1.5px solid #bfdbfe;'
-                    + (i === 0 ? 'background:#1a3a6b;color:#fff;' : 'background:#eff6ff;color:#1e40af;') + '">'
-                    + code + '</button>';
-            });
-            snippetHtml += '</div>';
-            appCodes.forEach(function(code, i) {
-                snippetHtml += '<div id="lic-snippet-' + code + '" style="display:' + (i === 0 ? 'block' : 'none') + ';">'
-                    + '<div style="background:#0f172a;border-radius:8px;padding:.65rem .85rem;font-family:monospace;font-size:.72rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;">'
-                    + d.app_snippets[code] + '</div></div>';
-            });
-        } else {
-            snippetHtml = '<div style="background:#0f172a;border-radius:8px;padding:.65rem .85rem;font-family:monospace;font-size:.72rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;">'
-                + d.env_snippet + '</div>';
-        }
-
-        GModal.alert({
-            type: 'info',
-            title: 'Public Key — ' + res.company,
-            message:
-                '<div style="text-align:left;">'
-                + '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.65rem .85rem;margin-bottom:.75rem;">'
-                + '<div style="font-size:.68rem;font-weight:700;color:#1e40af;margin-bottom:.35rem;">Signing Public Key (Ed25519)</div>'
-                + '<div style="font-family:monospace;font-size:.8rem;color:#1a3a6b;font-weight:700;word-break:break-all;margin-bottom:.35rem;">' + d.public_key + '</div>'
-                + '<div style="font-size:.62rem;color:#64748b;">KID: ' + d.kid + ' &nbsp;|&nbsp; Valid: ' + d.valid_from + ' – ' + d.valid_until + '</div>'
-                + '</div>'
-                + '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:.45rem .7rem;margin-bottom:.75rem;font-size:.7rem;color:#166534;">'
-                + '💡 ' + d.note
-                + '</div>'
-                + '<div style="font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Snippet .env per Aplikasi</div>'
-                + snippetHtml
-                + '<div style="font-size:.62rem;color:#94a3b8;margin-top:.5rem;">Server: ' + d.server_url + ' &nbsp;|&nbsp; Issuer: ' + d.issuer + '</div>'
-                + '</div>',
-            confirmText: 'Tutup',
-        });
-    })
-    .catch(() => GToast.danger('Gagal mengambil public key.'));
-}
-
-function switchSnippetTabLic(btn, code) {
-    document.querySelectorAll('[id^="lic-snippet-"]').forEach(function(el) { el.style.display = 'none'; });
-    btn.parentElement.querySelectorAll('button').forEach(function(b) { b.style.background = '#eff6ff'; b.style.color = '#1e40af'; });
-    var t = document.getElementById('lic-snippet-' + code);
-    if (t) t.style.display = 'block';
-    btn.style.background = '#1a3a6b'; btn.style.color = '#fff';
-}
-</script>
-@endpush
+{{-- scripts moved to after @endsection --}}
 <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-header"><span class="card-title">Licensed Apps &amp; Features</span></div>
     <div class="card-body" style="padding:0;">
@@ -517,3 +356,164 @@ function switchSnippetTabLic(btn, code) {
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function confirmRegenerateKey() {
+    GModal.confirm({
+        type: 'danger',
+        title: 'Generate Kunci Baru',
+        message: 'Generate kunci baru? <strong>Kunci lama tidak berlaku lagi</strong> dan ERMv3 harus diaktifkan ulang dengan kunci baru.',
+        confirmText: 'Ya, Generate',
+        cancelText: 'Batal',
+        onConfirm: function() {
+            document.getElementById('regenerateKeyForm').submit();
+        }
+    });
+}
+
+function retrieveKey(hash) {
+    var btn = document.getElementById('retrieveBtn');
+    var result = document.getElementById('retrieveResult');
+    btn.disabled = true;
+    btn.textContent = 'Memuat...';
+
+    fetch('/licenses/' + hash + '/retrieve-key', {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = 'Tampilkan Kunci';
+        result.style.display = 'block';
+        if (data.success) {
+            GModal.alert({
+                type: 'success',
+                title: 'Kunci Lisensi',
+                message: '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0;">'
+                    + '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.35rem;">Kunci Lisensi Aplikasi:</div>'
+                    + '<div style="font-family:monospace;font-size:.95rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
+                    + '</div>'
+                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Salin kunci ini sekarang dan simpan di tempat aman.</p>',
+                confirmText: 'Tutup',
+            });
+            result.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.5rem .75rem;font-size:.72rem;color:#166534;">✅ Kunci berhasil dipulihkan — lihat di modal.</div>';
+        } else {
+            GToast.danger(data.message);
+            result.style.display = 'none';
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Tampilkan Kunci';
+        GToast.danger('Gagal menghubungi server.');
+    });
+}
+
+function retrieveFLKLic(featureId, appHash) {
+    var btn = event.target;
+    btn.disabled = true; btn.textContent = '...';
+
+    fetch('/master/apps/' + appHash + '/features/' + featureId + '/retrieve-key', {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false; btn.textContent = 'Lihat FLK';
+        if (data.success) {
+            GModal.alert({
+                type: 'info',
+                title: 'Feature License Key (FLK)',
+                message: '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0;">'
+                    + '<div style="font-size:.68rem;color:#1e40af;font-weight:700;margin-bottom:.35rem;">Feature License Key:</div>'
+                    + '<div style="font-family:monospace;font-size:.9rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
+                    + '</div>'
+                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Berikan kunci ini ke client untuk aktivasi fitur di ERMv3.</p>',
+                confirmText: 'Tutup',
+            });
+        } else {
+            GToast.danger(data.message);
+        }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Lihat FLK'; GToast.danger('Gagal menghubungi server.'); });
+}
+
+function showLicensePublicKey(hash) {
+    fetch(window.location.origin + '/licenses/' + hash + '/public-key', {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { GToast.danger(res.message || 'Gagal.'); return; }
+        var d = res.data;
+        if (!d.has_key) {
+            GModal.alert({
+                type: 'warning',
+                title: 'Belum Ada Signing Key',
+                message: '<p>' + d.message + '</p>'
+                    + '<p style="margin-top:.5rem;font-size:.78rem;color:#64748b;">Buka <strong>Master → Companies → ' + res.company + '</strong> untuk generate signing key.</p>',
+                confirmText: 'OK',
+            });
+            return;
+        }
+
+        var snippetHtml = '';
+        var appCodes = Object.keys(d.app_snippets || {});
+
+        if (appCodes.length > 1) {
+            snippetHtml += '<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem;">';
+            appCodes.forEach(function(code, i) {
+                snippetHtml += '<button onclick="switchSnippetTabLic(this, \'' + code + '\')" '
+                    + 'style="padding:.2rem .6rem;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;border:1.5px solid #bfdbfe;'
+                    + (i === 0 ? 'background:#1a3a6b;color:#fff;' : 'background:#eff6ff;color:#1e40af;') + '">'
+                    + code + '</button>';
+            });
+            snippetHtml += '</div>';
+            appCodes.forEach(function(code, i) {
+                snippetHtml += '<div id="lic-snippet-' + code + '" style="display:' + (i === 0 ? 'block' : 'none') + ';">'
+                    + '<div style="background:#0f172a;border-radius:8px;padding:.65rem .85rem;font-family:monospace;font-size:.72rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;">'
+                    + d.app_snippets[code] + '</div></div>';
+            });
+        } else {
+            snippetHtml = '<div style="background:#0f172a;border-radius:8px;padding:.65rem .85rem;font-family:monospace;font-size:.72rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;">'
+                + d.env_snippet + '</div>';
+        }
+
+        GModal.alert({
+            type: 'info',
+            title: 'Public Key — ' + res.company,
+            message:
+                '<div style="text-align:left;">'
+                + '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.65rem .85rem;margin-bottom:.75rem;">'
+                + '<div style="font-size:.68rem;font-weight:700;color:#1e40af;margin-bottom:.35rem;">Signing Public Key (Ed25519)</div>'
+                + '<div style="font-family:monospace;font-size:.8rem;color:#1a3a6b;font-weight:700;word-break:break-all;margin-bottom:.35rem;">' + d.public_key + '</div>'
+                + '<div style="font-size:.62rem;color:#64748b;">KID: ' + d.kid + ' &nbsp;|&nbsp; Valid: ' + d.valid_from + ' – ' + d.valid_until + '</div>'
+                + '</div>'
+                + '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:.45rem .7rem;margin-bottom:.75rem;font-size:.7rem;color:#166534;">'
+                + '💡 ' + d.note
+                + '</div>'
+                + '<div style="font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Snippet .env per Aplikasi</div>'
+                + snippetHtml
+                + '<div style="font-size:.62rem;color:#94a3b8;margin-top:.5rem;">Server: ' + d.server_url + ' &nbsp;|&nbsp; Issuer: ' + d.issuer + '</div>'
+                + '</div>',
+            confirmText: 'Tutup',
+        });
+    })
+    .catch(() => GToast.danger('Gagal mengambil public key.'));
+}
+
+function switchSnippetTabLic(btn, code) {
+    document.querySelectorAll('[id^="lic-snippet-"]').forEach(function(el) { el.style.display = 'none'; });
+    btn.parentElement.querySelectorAll('button').forEach(function(b) { b.style.background = '#eff6ff'; b.style.color = '#1e40af'; });
+    var t = document.getElementById('lic-snippet-' + code);
+    if (t) t.style.display = 'block';
+    btn.style.background = '#1a3a6b'; btn.style.color = '#fff';
+}
+</script>
+@endpush
