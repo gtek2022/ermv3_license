@@ -22,6 +22,10 @@ Route::prefix('api/licensing/v1')
 Route::prefix('api/platform/v1')
     ->middleware(['api', 'throttle:api'])
     ->group(function () {
+        // Public key endpoint — no auth, used by client apps during install
+        Route::get('public-key', [\App\Http\Controllers\Api\PublicKeyController::class, 'show'])
+            ->name('platform.public-key');
+
         // Config sync — ERMv3 fetches signed configs, feature flags, enforcement policy
         Route::post('config-sync', [ConfigSyncController::class, 'sync'])
             ->name('platform.config-sync');

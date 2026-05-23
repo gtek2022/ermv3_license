@@ -20,5 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         // Purge expired nonces every 10 minutes
         $schedule->call(fn () => \App\Models\LicenseNonce::purgeExpired())->everyTenMinutes();
+        // Sync public key to master_configs daily (after key rotation)
+        $schedule->command('license:sync-public-key')->daily();
     })
     ->create();

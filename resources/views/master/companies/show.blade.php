@@ -7,12 +7,13 @@
 @endsection
 
 @section('content')
+@php $companyHash = Hashids::encode($company->id); @endphp
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;">
     <div class="card">
         <div class="card-header">
             <span class="card-title">Company Info</span>
             <div style="display:flex;gap:.5rem;">
-                <a href="{{ route('master.companies.edit', Hashids::encode($company->id)) }}" class="btn btn-secondary btn-sm">Edit</a>
+                <a href="{{ route('master.companies.edit', $companyHash) }}" class="btn btn-secondary btn-sm">Edit</a>
                 <span class="badge {{ $company->status === 'active' ? 'badge-success' : 'badge-secondary' }}">{{ $company->status }}</span>
             </div>
         </div>

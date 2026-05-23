@@ -712,6 +712,51 @@
                 @yield('breadcrumb')
             </nav>
             @endif
+
+            {{-- Public Key quick-copy in header --}}
+            @php
+                $signingPublicKey = \App\Models\MasterConfig::where('config_key','system.signing.public_key')->value('config_value');
+            @endphp
+            @if($signingPublicKey)
+            <div style="display:flex;align-items:center;gap:.5rem;background:#f8fafc;border:1.5px solid #e2e8f0;
+                border-radius:8px;padding:.3rem .65rem;max-width:320px;flex-shrink:0;"
+                title="LICENSING_PUBLIC_KEY — klik untuk copy">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                </svg>
+                <span id="pubKeyDisplay" style="font-family:monospace;font-size:.65rem;color:#475569;
+                    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;cursor:pointer;"
+                    onclick="copyPublicKey()"
+                    title="Klik untuk copy">{{ substr($signingPublicKey, 0, 28) }}…</span>
+                <button onclick="copyPublicKey()" id="copyPubKeyBtn"
+                    style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:0;
+                    display:flex;align-items:center;transition:color .15s;flex-shrink:0;"
+                    onmouseover="this.style.color='#1a3a6b'" onmouseout="this.style.color='#94a3b8'"
+                    title="Copy LICENSING_PUBLIC_KEY">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                </button>
+            </div>
+            <script>
+            var _pubKey = @json($signingPublicKey);
+            function copyPublicKey() {
+                navigator.clipboard.writeText(_pubKey).then(function() {
+                    var btn = document.getElementById('copyPubKeyBtn');
+                    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                    GToast.success('Public key disalin ke clipboard.');
+                    setTimeout(function() {
+                        btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                    }, 2000);
+                }).catch(function() {
+                    GToast.warning('Tidak bisa copy otomatis. Klik kanan → Copy pada teks kunci.');
+                });
+            }
+            </script>
+            @endif
         </header>
 
         <main class="main-content">
