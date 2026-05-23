@@ -118,6 +118,7 @@ function retrieveKey(hash) {
     btn.textContent = 'Memuat...';
 
     fetch('/licenses/' + hash + '/retrieve-key', {
+        credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })
@@ -156,6 +157,7 @@ function retrieveFLKLic(featureId, appHash) {
     btn.disabled = true; btn.textContent = '...';
 
     fetch('/master/apps/' + appHash + '/features/' + featureId + '/retrieve-key', {
+        credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })
@@ -181,7 +183,8 @@ function retrieveFLKLic(featureId, appHash) {
 }
 
 function showLicensePublicKey(hash) {
-    fetch('/licenses/' + hash + '/public-key', {
+    fetch(window.location.origin + '/licenses/' + hash + '/public-key', {
+        credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })

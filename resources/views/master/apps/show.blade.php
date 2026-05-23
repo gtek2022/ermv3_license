@@ -223,7 +223,8 @@
 function retrieveFLK(featureId, appHash) {
     var btn = event.target;
     btn.disabled = true; btn.textContent = '...';
-    fetch('/master/apps/' + appHash + '/features/' + featureId + '/retrieve-key', {
+    fetch(window.location.origin + '/master/apps/' + appHash + '/features/' + featureId + '/retrieve-key', {
+        credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })

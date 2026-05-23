@@ -747,12 +747,12 @@
                 navigator.clipboard.writeText(_pubKey).then(function() {
                     var btn = document.getElementById('copyPubKeyBtn');
                     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                    GToast.success('Public key disalin ke clipboard.');
+                    if (window.GToast) GToast.success('Public key disalin ke clipboard.');
                     setTimeout(function() {
                         btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
                     }, 2000);
                 }).catch(function() {
-                    GToast.warning('Tidak bisa copy otomatis. Klik kanan → Copy pada teks kunci.');
+                    if (window.GToast) GToast.warning('Tidak bisa copy otomatis. Klik kanan → Copy pada teks kunci.');
                 });
             }
             </script>
@@ -799,8 +799,6 @@
         @endforeach
     });</script>
     @endif
-
-    @stack('scripts')
 
     <script>
     /* ══════════════════════════════════════════════════════════════════════════
@@ -1000,5 +998,8 @@
         });
     });
     </script>
+
+    {{-- @stack('scripts') MUST be AFTER GModal/GToast definitions so views can use them --}}
+    @stack('scripts')
 </body>
 </html>
