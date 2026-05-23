@@ -78,10 +78,9 @@
                             <div style="display:flex;gap:.35rem;align-items:center;">
                                 <a href="{{ route('license.companies.show', $hash) }}" class="btn btn-secondary btn-sm">View</a>
                                 <form method="POST" action="{{ route('license.companies.destroy', $hash) }}"
-                                    data-confirm="Hapus lisensi ini? Data akan disimpan tapi tidak aktif lagi.{{ $lic->active_installations_count > 0 ? ' ⚠ Masih ada ' . $lic->active_installations_count . ' instalasi aktif.' : '' }}"
-                                    data-confirm-type="{{ $lic->active_installations_count > 0 ? 'warning' : 'danger' }}"
-                                    data-confirm-title="Hapus Lisensi"
-                                    data-confirm-ok="Ya, Hapus">
+                                    class="js-delete-license-form"
+                                    data-active-installs="{{ $lic->active_installations_count }}"
+                                    data-license-label="{{ $lic->label ?? $lic->company?->name ?? 'lisensi ini' }}">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
                                 </form>
@@ -99,4 +98,42 @@
         @endif
     </div>
 </div>
+
+{{-- Inline delete-confirm script — guaranteed to run, no @push dependency --}}
+<script>
+(function() {
+    document.querySelectorAll('form.js-delete-license-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (form.dataset.confirmed === '1') return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            var activeInstalls = parseInt(form.dataset.activeInstalls || '0', 10);
+            var label          = form.dataset.licenseLabel || 'lisensi ini';
+            var msg = 'Hapus <strong>' + label + '</strong>? Data akan disimpan tapi tidak aktif lagi.';
+            if (activeInstalls > 0) {
+                msg += '<br><br><span style="color:#d97706;">⚠ Masih ada ' + activeInstalls + ' instalasi aktif.</span>';
+            }
+
+            var doSubmit = function() {
+                form.dataset.confirmed = '1';
+                form.submit();
+            };
+
+            if (window.GModal && typeof GModal.confirm === 'function') {
+                GModal.confirm({
+                    type: activeInstalls > 0 ? 'warning' : 'danger',
+                    title: 'Hapus Lisensi',
+                    message: msg,
+                    confirmText: 'Ya, Hapus',
+                    cancelText: 'Batal',
+                    onConfirm: doSubmit
+                });
+            } else {
+                if (confirm('Hapus ' + label + '?')) doSubmit();
+            }
+        });
+    });
+})();
+</script>
 @endsection

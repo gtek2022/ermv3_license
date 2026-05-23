@@ -101,10 +101,49 @@
                     <div style="display:flex;gap:.5rem;align-items:center;">
                         <input type="text" name="reason" id="regenerateReason" class="form-control"
                             placeholder="Alasan (opsional)" style="font-size:.78rem;padding:.35rem .6rem;">
-                        <button type="button" class="btn btn-danger btn-sm" style="white-space:nowrap;"
-                            onclick="confirmRegenerateKey()">Generate Kunci Baru</button>
+                        <button type="submit" class="btn btn-danger btn-sm" style="white-space:nowrap;"
+                            id="regenerateKeyBtn">Generate Kunci Baru</button>
                     </div>
                 </form>
+
+                {{-- Inline script — guaranteed to execute, no @push dependency --}}
+                <script>
+                (function() {
+                    var form = document.getElementById('regenerateKeyForm');
+                    var btn  = document.getElementById('regenerateKeyBtn');
+                    if (!form || !btn) return;
+
+                    form.addEventListener('submit', function(e) {
+                        // Only intercept if not already confirmed
+                        if (form.dataset.confirmed === '1') return;
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        var doSubmit = function() {
+                            form.dataset.confirmed = '1';
+                            btn.disabled = true;
+                            btn.textContent = 'Memproses...';
+                            form.submit();
+                        };
+
+                        if (window.GModal && typeof GModal.confirm === 'function') {
+                            GModal.confirm({
+                                type: 'danger',
+                                title: 'Generate Kunci Baru',
+                                message: 'Generate kunci baru? <strong>Kunci lama tidak berlaku lagi</strong> dan ERMv3 harus diaktifkan ulang dengan kunci baru.',
+                                confirmText: 'Ya, Generate',
+                                cancelText: 'Batal',
+                                onConfirm: doSubmit
+                            });
+                        } else {
+                            // Fallback if GModal not available
+                            if (confirm('Generate kunci baru? Kunci lama tidak berlaku lagi.')) {
+                                doSubmit();
+                            }
+                        }
+                    });
+                })();
+                </script>
             </div>
         </div>
     </div>
