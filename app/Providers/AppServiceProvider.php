@@ -33,5 +33,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('licensing-register', fn (Request $r) => Limit::perMinute(
             (int) config('licensing.rate_limit.register_per_minute', 30)
         )->by($r->ip()));
+
+        // Share Hashids helper to all views so blade can call Hashids::encode()
+        \Illuminate\Support\Facades\View::share('Hashids', app(\Vinkla\Hashids\Facades\Hashids::class));
     }
 }

@@ -1,0 +1,246 @@
+<?php
+
+namespace App\Http\Controllers\License;
+
+use App\Http\Controllers\Controller;
+use App\Models\LicenseApp;
+use App\Models\LicenseCompany;
+use App\Models\LicenseLogsAudit;
+use App\Models\MasterApp;
+use App\Models\MasterCompany;
+use App\Models\MasterConfig;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
+use LucaLongo\Licensing\Models\License;
+use Vinkla\Hashids\Facades\Hashids;
+
+class LicenseCompanyController extends Controller
+{
+    public function index(): View
+    {
+        $licenses = LicenseCompany::with('company')
+            ->withCount('activeInstallations')
+            ->latest()->paginate(20);
+
+        return view('license.companies.index', compact('licenses'));
+    }
+
+    public function create(): View
+    {
+        $companies = MasterCompany::active()->orderBy('name')->pluck('name', 'id');
+        $apps      = MasterApp::active()->orderBy('name')->get();
+
+        return view('license.companies.create', compact('companies', 'apps'));
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'company_id'        => 'required|integer',
+            'label'             => 'nullable|string|max:255',
+            'days'              => 'required|integer|min:1|max:3650',
+            'max_installations' => 'required|integer|min:1|max:100',
+            'notes'             => 'nullable|string',
+            'app_codes'         => 'required|array|min:1',
+            'app_codes.*'       => 'string|exists:master_apps,code',
+            'app_max_inst'      => 'nullable|array',
+        ]);
+
+        // Generate license key
+        $key     = 'LIC-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4))
+                 . '-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
+        $keyHash = LicenseCompany::hashKey($key);
+
+        $license = LicenseCompany::create([
+            'company_id'        => $data['company_id'],
+            'license_key'       => $key,
+            'license_key_hash'  => $keyHash,
+            'label'             => $data['label'] ?? null,
+            'status'            => 'active',
+            'activated_at'      => now(),
+            'expires_at'        => now()->addDays((int) $data['days']),
+            'max_installations' => (int) $data['max_installations'],
+            'notes'             => $data['notes'] ?? null,
+            'created_by'        => auth()->id(),
+        ]);
+
+        // Create license_apps entries
+        foreach ($data['app_codes'] as $appCode) {
+            $maxInst = (int) ($data['app_max_inst'][$appCode] ?? $data['max_installations']);
+            LicenseApp::create([
+                'license_company_id' => $license->id,
+                'app_code'           => $appCode,
+                'status'             => 'active',
+                'valid_from'         => now(),
+                'valid_until'        => now()->addDays((int) $data['days']),
+                'max_installations'  => $maxInst,
+                'created_by'        => auth()->id(),
+            ]);
+        }
+
+        LicenseLogsAudit::record('activated', 'license_company', $license->id, [
+            'new' => ['key' => substr($key, 0, 8) . '...', 'apps' => $data['app_codes']],
+        ]);
+
+        return redirect()->route('license.companies.show', Hashids::encode($license->id))
+            ->with('success', 'License created. Key: ' . $key);
+    }
+
+    public function show(string $hash): View
+    {
+        $license = $this->findOrFail($hash);
+        $license->load(['company', 'licenseApps', 'activeInstallations']);
+        $heartbeatLogs = $license->heartbeatLogs()->orderByDesc('heartbeat_at')->limit(20)->get();
+
+        return view('license.companies.show', compact('license', 'heartbeatLogs'));
+    }
+
+    public function suspend(string $hash): RedirectResponse
+    {
+        $license = $this->findOrFail($hash);
+        $license->update(['status' => 'suspended', 'updated_by' => auth()->id()]);
+        LicenseLogsAudit::record('suspended', 'license_company', $license->id);
+        return back()->with('success', 'License suspended.');
+    }
+
+    public function reinstate(string $hash): RedirectResponse
+    {
+        $license = $this->findOrFail($hash);
+        $license->update(['status' => 'active', 'updated_by' => auth()->id()]);
+        LicenseLogsAudit::record('activated', 'license_company', $license->id);
+        return back()->with('success', 'License reinstated.');
+    }
+
+    public function cancel(string $hash): RedirectResponse
+    {
+        $license = $this->findOrFail($hash);
+        $license->update(['status' => 'cancelled', 'updated_by' => auth()->id()]);
+        LicenseLogsAudit::record('cancelled', 'license_company', $license->id);
+        return back()->with('success', 'License cancelled.');
+    }
+
+    public function renew(Request $request, string $hash): RedirectResponse
+    {
+        $data    = $request->validate(['days' => 'required|integer|min:1|max:3650']);
+        $license = $this->findOrFail($hash);
+
+        $newExpiry = ($license->expires_at && $license->expires_at->isFuture())
+            ? $license->expires_at->addDays((int) $data['days'])
+            : now()->addDays((int) $data['days']);
+
+        $license->update([
+            'expires_at' => $newExpiry,
+            'status'     => 'active',
+            'updated_by' => auth()->id(),
+        ]);
+
+        // Extend all license_apps too
+        $license->licenseApps()->update(['valid_until' => $newExpiry]);
+
+        LicenseLogsAudit::record('renewed', 'license_company', $license->id, [
+            'new' => ['expires_at' => $newExpiry->toDateString()],
+        ]);
+
+        return back()->with('success', 'License renewed until ' . $newExpiry->format('d M Y') . '.');
+    }
+
+    public function updatePolicy(Request $request, string $hash): RedirectResponse
+    {        $data = $request->validate([
+            'heartbeat_tolerance' => 'required|integer|min:1|max:20',
+            'warning_days'        => 'required|integer|min:1|max:30',
+        ]);
+
+        // Store policy overrides in master_configs scoped to this license
+        // We use the license's id as a reference in app_configs
+        $license = $this->findOrFail($hash);
+
+        // Update or create per-license policy in master_app_configs
+        foreach ($data as $key => $value) {
+            \App\Models\MasterAppConfig::updateOrCreate(
+                ['app_code' => 'license_' . $license->id, 'config_key' => $key, 'config_scope' => 'global'],
+                ['config_value' => (string) $value, 'config_type' => 'integer', 'updated_by' => auth()->id()]
+            );
+        }
+
+        return back()->with('success', 'Policy updated.');
+    }
+
+    /**
+     * Retrieve the original license key (decrypted from meta).
+     * Only works if APP_KEY has not changed since the license was created.
+     */
+    public function retrieveKey(string $hash): JsonResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        // Find the corresponding package License record by key hash
+        $license = License::where('key_hash', $licenseCompany->license_key_hash)->first();
+
+        if (! $license) {
+            return response()->json(['success' => false, 'message' => 'License record not found.'], 404);
+        }
+
+        $key = $license->retrieveKey();
+
+        if (! $key) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kunci tidak dapat dipulihkan. Kemungkinan APP_KEY telah berubah sejak lisensi dibuat. Gunakan fitur Regenerate Key.',
+            ], 422);
+        }
+
+        LicenseLogsAudit::record('key_retrieved', 'license_company', $licenseCompany->id, [
+            'reason' => 'Admin retrieved lost key',
+        ]);
+
+        return response()->json(['success' => true, 'key' => $key]);
+    }
+
+    /**
+     * Regenerate a new license key for this license.
+     * Use when the original key cannot be recovered (APP_KEY changed).
+     * The client (ERMv3) must re-activate with the new key.
+     */
+    public function regenerateKey(Request $request, string $hash): RedirectResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        $license = License::where('key_hash', $licenseCompany->license_key_hash)->first();
+
+        if (! $license) {
+            return back()->withErrors(['error' => 'License record not found.']);
+        }
+
+        if (! $license->canRegenerateKey()) {
+            return back()->withErrors(['error' => 'Key regeneration is disabled.']);
+        }
+
+        $newKey     = $license->regenerateKey();
+        $newKeyHash = LicenseCompany::hashKey($newKey);
+
+        // Update our own record with the new key and hash
+        $licenseCompany->update([
+            'license_key'      => $newKey,
+            'license_key_hash' => $newKeyHash,
+            'updated_by'       => auth()->id(),
+        ]);
+
+        LicenseLogsAudit::record('key_regenerated', 'license_company', $licenseCompany->id, [
+            'reason' => $request->input('reason', 'Key regenerated by admin'),
+        ]);
+
+        return redirect()
+            ->route('license.companies.show', $hash)
+            ->with('success', 'Kunci lisensi baru berhasil dibuat: ' . $newKey . ' — Catat segera, tidak akan ditampilkan lagi.');
+    }
+
+    private function findOrFail(string $hash): LicenseCompany
+    {
+        $ids = Hashids::decode($hash);
+        abort_if(empty($ids), 404);
+        return LicenseCompany::findOrFail($ids[0]);
+    }
+}
