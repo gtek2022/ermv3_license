@@ -253,6 +253,24 @@ class LicenseCompanyController extends Controller
     }
 
     /**
+     * Return the company's public key info for this license.
+     */
+    public function publicKey(string $hash): \Illuminate\Http\JsonResponse
+    {
+        $license = $this->findOrFail($hash);
+        $company = \App\Models\MasterCompany::find($license->company_id);
+
+        if (! $company) {
+            return response()->json(['success' => false, 'message' => 'Company tidak ditemukan.'], 404);
+        }
+
+        $keyService = app(\App\Services\CompanyKeyService::class);
+        $info       = $keyService->getPublicKeyInfo($company);
+
+        return response()->json(['success' => true, 'data' => $info, 'company' => $company->name]);
+    }
+
+    /**
      * Retrieve the original license key (decrypted from meta).
      * Only works if APP_KEY has not changed since the license was created.
      */

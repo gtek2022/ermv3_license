@@ -50,8 +50,15 @@
                         <td style="font-size:.72rem;color:#94a3b8;">{{ $config->updated_at->format('d M Y') }}</td>
                         <td>
                             <div style="display:flex;gap:.35rem;">
-                                <a href="{{ route('master.configs.edit', Hashids::encode($config->id)) }}" class="btn btn-secondary btn-sm">Edit</a>
-                                <a href="{{ route('master.configs.history', Hashids::encode($config->id)) }}" class="btn btn-secondary btn-sm">History</a>
+                                @if(str_starts_with($config->config_key, 'system.signing.'))
+                                    <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;color:#94a3b8;padding:.3rem .6rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        Auto-managed
+                                    </span>
+                                @else
+                                    <a href="{{ route('master.configs.edit', Hashids::encode($config->id)) }}" class="btn btn-secondary btn-sm">Edit</a>
+                                    <a href="{{ route('master.configs.history', Hashids::encode($config->id)) }}" class="btn btn-secondary btn-sm">History</a>
+                                @endif
                             </div>
                         </td>
                     </tr>

@@ -78,6 +78,12 @@ class ConfigController extends Controller
     public function edit(string $hash): View
     {
         $config = $this->findOrFail($hash);
+
+        // system.signing.* configs are managed automatically — not editable
+        if (str_starts_with($config->config_key, 'system.signing.')) {
+            abort(403, 'This config is managed automatically and cannot be edited.');
+        }
+
         $categories = MasterConfig::distinct()->pluck('category')->sort()->values();
         return view('master.configs.edit', compact('config', 'categories'));
     }
@@ -85,6 +91,11 @@ class ConfigController extends Controller
     public function update(Request $request, string $hash): RedirectResponse
     {
         $config = $this->findOrFail($hash);
+
+        // system.signing.* configs are managed automatically — not editable
+        if (str_starts_with($config->config_key, 'system.signing.')) {
+            return back()->withErrors(['error' => 'This config is managed automatically and cannot be edited.']);
+        }
 
         $data = $request->validate([
             'config_value' => 'nullable|string',
@@ -163,6 +174,11 @@ class ConfigController extends Controller
     public function destroy(string $hash): RedirectResponse
     {
         $config = $this->findOrFail($hash);
+
+        if (str_starts_with($config->config_key, 'system.signing.')) {
+            return back()->withErrors(['error' => 'This config is managed automatically and cannot be deleted.']);
+        }
+
         LogAudit::record('deleted', 'master_config', ['subject_type' => 'MasterConfig', 'subject_id' => $config->id, 'subject_label' => $config->config_key]);
         $config->delete();
         return redirect()->route('master.configs.index')->with('success', 'Config deleted.');

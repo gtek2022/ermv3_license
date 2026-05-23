@@ -28,10 +28,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [CompanyController::class, 'index'])->name('index');
         Route::get('/create', [CompanyController::class, 'create'])->name('create');
         Route::post('/', [CompanyController::class, 'store'])->name('store');
-        Route::get('/{hash}', [CompanyController::class, 'show'])->name('show');
         Route::get('/{hash}/edit', [CompanyController::class, 'edit'])->name('edit');
         Route::put('/{hash}', [CompanyController::class, 'update'])->name('update');
         Route::delete('/{hash}', [CompanyController::class, 'destroy'])->name('destroy');
+        Route::get('/{hash}', [CompanyController::class, 'show'])->name('show');
     });
 
     // ── Master: Apps ──────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [AppController::class, 'index'])->name('index');
         Route::get('/create', [AppController::class, 'create'])->name('create');
         Route::post('/', [AppController::class, 'store'])->name('store');
-        Route::get('/{hash}', [AppController::class, 'show'])->name('show');
+        // Sub-routes before /{hash} wildcard
         Route::get('/{hash}/edit', [AppController::class, 'edit'])->name('edit');
         Route::put('/{hash}', [AppController::class, 'update'])->name('update');
         Route::post('/{hash}/features', [AppController::class, 'storeFeature'])->name('features.store');
@@ -47,6 +47,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{hash}/features/{featureId}/toggle', [AppController::class, 'toggleFeature'])->name('features.toggle');
         Route::get('/{hash}/features/{featureId}/retrieve-key', [AppController::class, 'retrieveFeatureKey'])->name('features.retrieve-key');
         Route::post('/{hash}/features/{featureId}/regenerate-key', [AppController::class, 'regenerateFeatureKey'])->name('features.regenerate-key');
+        // Wildcard show LAST
+        Route::get('/{hash}', [AppController::class, 'show'])->name('show');
     });
 
     // ── Master: Configs ───────────────────────────────────────────────────────
@@ -75,17 +77,19 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [LicenseCompanyController::class, 'index'])->name('index');
         Route::get('/create', [LicenseCompanyController::class, 'create'])->name('create');
         Route::post('/', [LicenseCompanyController::class, 'store'])->name('store');
-        Route::get('/{hash}', [LicenseCompanyController::class, 'show'])->name('show');
+        // ── Sub-routes MUST come before /{hash} to avoid wildcard capture ──
+        Route::get('/{hash}/retrieve-key', [LicenseCompanyController::class, 'retrieveKey'])->name('retrieve-key');
+        Route::post('/{hash}/regenerate-key', [LicenseCompanyController::class, 'regenerateKey'])->name('regenerate-key');
         Route::post('/{hash}/suspend', [LicenseCompanyController::class, 'suspend'])->name('suspend');
         Route::post('/{hash}/reinstate', [LicenseCompanyController::class, 'reinstate'])->name('reinstate');
         Route::post('/{hash}/cancel', [LicenseCompanyController::class, 'cancel'])->name('cancel');
         Route::post('/{hash}/renew', [LicenseCompanyController::class, 'renew'])->name('renew');
         Route::post('/{hash}/policy', [LicenseCompanyController::class, 'updatePolicy'])->name('policy.update');
-        Route::get('/{hash}/retrieve-key', [LicenseCompanyController::class, 'retrieveKey'])->name('retrieve-key');
-        Route::post('/{hash}/regenerate-key', [LicenseCompanyController::class, 'regenerateKey'])->name('regenerate-key');
         Route::post('/{hash}/features', [LicenseCompanyController::class, 'addFeature'])->name('features.add');
         Route::delete('/{hash}/features/{featureId}', [LicenseCompanyController::class, 'removeFeature'])->name('features.remove');
         Route::post('/{hash}/features/{featureId}/toggle', [LicenseCompanyController::class, 'toggleFeature'])->name('features.toggle');
+        // ── Wildcard show route LAST ──────────────────────────────────────────
+        Route::get('/{hash}', [LicenseCompanyController::class, 'show'])->name('show');
     });
 
     // ── License: Installations ────────────────────────────────────────────────
@@ -106,4 +110,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{hash}', [UserManagementController::class, 'update'])->name('update');
         Route::delete('/{hash}', [UserManagementController::class, 'destroy'])->name('destroy');
     });
+
+    // ── System: Public Key Info ───────────────────────────────────────────────
+    Route::get('/system/public-key', [\App\Http\Controllers\Api\PublicKeyController::class, 'show'])
+        ->name('system.public-key');
 });

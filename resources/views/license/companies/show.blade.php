@@ -17,7 +17,14 @@
     <div class="card">
         <div class="card-header">
             <span class="card-title">License Info</span>
-            <span class="badge {{ $bm[$license->status] ?? 'badge-secondary' }}">{{ $license->status }}</span>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+                <button onclick="showLicensePublicKey('{{ $hash }}')"
+                    class="btn btn-secondary btn-sm" style="display:flex;align-items:center;gap:.3rem;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                    Public Key
+                </button>
+                <span class="badge {{ $bm[$license->status] ?? 'badge-secondary' }}">{{ $license->status }}</span>
+            </div>
         </div>
         <div class="card-body">
             @foreach([['Company', $license->company?->name ?? '—'],['Label', $license->label ?? '—'],['Key', substr($license->license_key,0,12).'…'],['Activated', $license->activated_at?->format('d M Y H:i') ?? '—'],['Expires', $license->expires_at?->format('d M Y') ?? '∞'],['Max Installs', $license->max_installations]] as [$label,$val])
@@ -171,6 +178,80 @@ function retrieveFLKLic(featureId, appHash) {
         }
     })
     .catch(() => { btn.disabled = false; btn.textContent = 'Lihat FLK'; GToast.danger('Gagal menghubungi server.'); });
+}
+
+function showLicensePublicKey(hash) {
+    fetch('/licenses/' + hash + '/public-key', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) { GToast.danger(res.message || 'Gagal.'); return; }
+        var d = res.data;
+        if (!d.has_key) {
+            GModal.alert({
+                type: 'warning',
+                title: 'Belum Ada Signing Key',
+                message: '<p>' + d.message + '</p>'
+                    + '<p style="margin-top:.5rem;font-size:.78rem;color:#64748b;">Buka <strong>Master → Companies → ' + res.company + '</strong> untuk generate signing key.</p>',
+                confirmText: 'OK',
+            });
+            return;
+        }
+
+        // Build per-app snippet tabs
+        var snippetHtml = '';
+        var appCodes = Object.keys(d.app_snippets || {});
+
+        if (appCodes.length > 1) {
+            snippetHtml += '<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem;">';
+            appCodes.forEach(function(code, i) {
+                snippetHtml += '<button onclick="switchSnippetTabLic(this, \'' + code + '\')" '
+                    + 'style="padding:.2rem .6rem;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;border:1.5px solid #bfdbfe;'
+                    + (i === 0 ? 'background:#1a3a6b;color:#fff;' : 'background:#eff6ff;color:#1e40af;') + '">'
+                    + code + '</button>';
+            });
+            snippetHtml += '</div>';
+            appCodes.forEach(function(code, i) {
+                snippetHtml += '<div id="lic-snippet-' + code + '" style="display:' + (i === 0 ? 'block' : 'none') + ';">'
+                    + '<div style="background:#0f172a;border-radius:8px;padding:.65rem .85rem;font-family:monospace;font-size:.72rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;">'
+                    + d.app_snippets[code] + '</div></div>';
+            });
+        } else {
+            snippetHtml = '<div style="background:#0f172a;border-radius:8px;padding:.65rem .85rem;font-family:monospace;font-size:.72rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;">'
+                + d.env_snippet + '</div>';
+        }
+
+        GModal.alert({
+            type: 'info',
+            title: 'Public Key — ' + res.company,
+            message:
+                '<div style="text-align:left;">'
+                + '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.65rem .85rem;margin-bottom:.75rem;">'
+                + '<div style="font-size:.68rem;font-weight:700;color:#1e40af;margin-bottom:.35rem;">Signing Public Key (Ed25519)</div>'
+                + '<div style="font-family:monospace;font-size:.8rem;color:#1a3a6b;font-weight:700;word-break:break-all;margin-bottom:.35rem;">' + d.public_key + '</div>'
+                + '<div style="font-size:.62rem;color:#64748b;">KID: ' + d.kid + ' &nbsp;|&nbsp; Valid: ' + d.valid_from + ' – ' + d.valid_until + '</div>'
+                + '</div>'
+                + '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:.45rem .7rem;margin-bottom:.75rem;font-size:.7rem;color:#166534;">'
+                + '💡 ' + d.note
+                + '</div>'
+                + '<div style="font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Snippet .env per Aplikasi</div>'
+                + snippetHtml
+                + '<div style="font-size:.62rem;color:#94a3b8;margin-top:.5rem;">Server: ' + d.server_url + ' &nbsp;|&nbsp; Issuer: ' + d.issuer + '</div>'
+                + '</div>',
+            confirmText: 'Tutup',
+        });
+    })
+    .catch(() => GToast.danger('Gagal mengambil public key.'));
+}
+
+function switchSnippetTabLic(btn, code) {
+    document.querySelectorAll('[id^="lic-snippet-"]').forEach(function(el) { el.style.display = 'none'; });
+    btn.parentElement.querySelectorAll('button').forEach(function(b) { b.style.background = '#eff6ff'; b.style.color = '#1e40af'; });
+    var t = document.getElementById('lic-snippet-' + code);
+    if (t) t.style.display = 'block';
+    btn.style.background = '#1a3a6b'; btn.style.color = '#fff';
 }
 </script>
 @endpush
@@ -386,7 +467,9 @@ function retrieveFLKLic(featureId, appHash) {
 
 {{-- Recent heartbeats --}}
 <div class="card">
-    <div class="card-header"><span class="card-title">Recent Heartbeats</span></div>
+    <div class="card-header">
+        <span class="card-title">Recent Heartbeats</span>
+    </div>
     <div class="card-body" style="padding:0;">
         <div class="table-wrap">
             <table>
