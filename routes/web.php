@@ -79,6 +79,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [LicenseCompanyController::class, 'store'])->name('store');
         // ── Sub-routes MUST come before /{hash} to avoid wildcard capture ──
         Route::get('/{hash}/retrieve-key', [LicenseCompanyController::class, 'retrieveKey'])->name('retrieve-key');
+        Route::get('/{hash}/regenerate-confirm', [LicenseCompanyController::class, 'regenerateConfirm'])->name('regenerate-confirm');
         Route::post('/{hash}/regenerate-key', [LicenseCompanyController::class, 'regenerateKey'])->name('regenerate-key');
         Route::get('/{hash}/public-key', [LicenseCompanyController::class, 'publicKey'])->name('public-key');
         Route::delete('/{hash}', [LicenseCompanyController::class, 'destroy'])->name('destroy');

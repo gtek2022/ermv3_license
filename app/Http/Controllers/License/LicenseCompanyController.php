@@ -310,6 +310,17 @@ class LicenseCompanyController extends Controller
     }
 
     /**
+     * Show confirmation page for regenerating license key.
+     */
+    public function regenerateConfirm(string $hash): View
+    {
+        $licenseCompany = $this->findOrFail($hash);
+        $licenseCompany->load('company');
+
+        return view('license.companies.regenerate-confirm', compact('licenseCompany', 'hash'));
+    }
+
+    /**
      * Regenerate a new license key for this license.
      * Use when the original key cannot be recovered (APP_KEY changed).
      * The client (ERMv3) must re-activate with the new key.
