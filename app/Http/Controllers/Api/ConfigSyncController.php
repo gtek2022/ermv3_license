@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\LicenseCompany;
+use App\Models\LicenseFeatureActivation;
 use App\Models\LicenseInstallation;
 use App\Models\LicenseNonce;
 use App\Models\MasterAppConfig;
+use App\Models\MasterAppFeature;
 use App\Models\MasterConfig;
 use App\Models\MasterFeatureFlag;
 use App\Services\Licensing\SigningService;
@@ -35,6 +37,7 @@ class ConfigSyncController extends Controller
             'app_code'               => 'required|string|max:50',
             'license_key'            => 'required|string',
             'fingerprint'            => 'required|string|max:64',
+            'installation_uuid'      => 'nullable|string|max:64',
             'current_config_version' => 'nullable|string',
             'timestamp'              => 'required|string',
             'nonce'                  => 'required|string|max:64',
@@ -77,18 +80,23 @@ class ConfigSyncController extends Controller
         LicenseNonce::consume($data['nonce']);
 
         // ── Build config payload ──────────────────────────────────────────────
-        $configs = $this->buildConfigs($data['app_code']);
-        $flags   = $this->buildFeatureFlags($data['app_code']);
-        $policy  = $this->buildEnforcementPolicy($license->id);
-        $version = 'v' . crc32(json_encode($configs) . json_encode($flags));
+        $installationUuid = $data['installation_uuid'] ?? null;
+        $configs          = $this->buildConfigs($data['app_code']);
+        $flags            = $this->buildFeatureFlags($data['app_code']);
+        $licensedFeatures = $this->buildLicensedFeatures($licenseApp);
+        $featureCatalog   = $this->buildFeatureCatalog($data['app_code'], $installationUuid);
+        $policy           = $this->buildEnforcementPolicy($license->id);
+        $version          = 'v' . crc32(json_encode($configs) . json_encode($flags) . json_encode($licensedFeatures));
 
         $payload = [
-            'configs'            => $configs,
-            'feature_flags'      => $flags,
-            'enforcement_policy' => $policy,
-            'version'            => $version,
-            'expires_at'         => now()->addHours(2)->toIso8601String(),
-            'issued_at'          => now()->toIso8601String(),
+            'configs'             => $configs,
+            'feature_flags'       => $flags,
+            'licensed_features'   => $licensedFeatures,
+            'feature_catalog'     => $featureCatalog,
+            'enforcement_policy'  => $policy,
+            'version'             => $version,
+            'expires_at'          => now()->addHours(2)->toIso8601String(),
+            'issued_at'           => now()->toIso8601String(),
         ];
 
         // ── Sign the response ─────────────────────────────────────────────────
@@ -134,6 +142,64 @@ class ConfigSyncController extends Controller
         ->toArray();
     }
 
+    /**
+     * Build the licensed features for this specific license_app.
+     *
+     * Returns: { feature_key => { licensed: bool, valid_until: string|null } }
+     *
+     * Logic:
+     * - If license_app has NO feature records at all → all master features are licensed (backward compat)
+     * - If license_app HAS feature records → only those features are licensed
+     */
+    private function buildLicensedFeatures(\App\Models\LicenseApp $licenseApp): array
+    {
+        $licensedFeatures = $licenseApp->features()->get();
+
+        // No feature records = all features licensed (app-level license, no feature restriction)
+        if ($licensedFeatures->isEmpty()) {
+            return \App\Models\MasterAppFeature::where('app_code', $licenseApp->app_code)
+                ->where('is_active', true)
+                ->get()
+                ->mapWithKeys(fn ($f) => [
+                    $f->feature_key => [
+                        'licensed'    => true,
+                        'valid_until' => null,
+                        'status'      => 'active',
+                    ]
+                ])
+                ->toArray();
+        }
+
+        // Has feature records = only licensed features are active
+        $result = [];
+
+        // First, mark all master features as NOT licensed
+        \App\Models\MasterAppFeature::where('app_code', $licenseApp->app_code)
+            ->where('is_active', true)
+            ->get()
+            ->each(function ($f) use (&$result) {
+                $result[$f->feature_key] = [
+                    'licensed'    => false,
+                    'valid_until' => null,
+                    'status'      => 'unlicensed',
+                ];
+            });
+
+        // Then override with licensed ones
+        foreach ($licensedFeatures as $lf) {
+            $isActive = $lf->status === 'active'
+                && (! $lf->valid_until || $lf->valid_until->isFuture());
+
+            $result[$lf->feature_key] = [
+                'licensed'    => $isActive,
+                'valid_until' => $lf->valid_until?->toIso8601String(),
+                'status'      => $lf->status,
+            ];
+        }
+
+        return $result;
+    }
+
     private function buildEnforcementPolicy(int $licenseId): array
     {
         // Per-license overrides stored in master_app_configs with app_code = 'license_{id}'
@@ -159,5 +225,49 @@ class ConfigSyncController extends Controller
     private function error(string $code, string $message, int $status): JsonResponse
     {
         return response()->json(['success' => false, 'error' => $code, 'message' => $message], $status);
+    }
+
+    /**
+     * Build the feature catalog — all features for this app with their type and activation status.
+     *
+     * Returns: {
+     *   feature_key => {
+     *     name: string,
+     *     category: string,
+     *     is_active: bool,           // admin toggle (free features)
+     *     requires_license: bool,    // true = needs FLK-XXXX key
+     *     activated: bool,           // true = this installation has activated the feature license
+     *   }
+     * }
+     */
+    private function buildFeatureCatalog(string $appCode, ?string $installationUuid): array
+    {
+        $features = MasterAppFeature::where('app_code', $appCode)->get();
+
+        // Get activated feature keys for this installation
+        $activatedKeys = [];
+        if ($installationUuid) {
+            $activatedKeys = LicenseFeatureActivation::where('app_code', $appCode)
+                ->where('installation_uuid', $installationUuid)
+                ->where('status', 'active')
+                ->pluck('feature_key')
+                ->toArray();
+        }
+
+        return $features->mapWithKeys(function ($f) use ($activatedKeys) {
+            return [
+                $f->feature_key => [
+                    'name'             => $f->name,
+                    'category'         => $f->category,
+                    'is_active'        => $f->is_active,
+                    'requires_license' => $f->requires_license,
+                    // For free features: accessible if is_active = true
+                    // For licensed features: accessible if is_active = true AND activated = true
+                    'activated'        => $f->requires_license
+                        ? in_array($f->feature_key, $activatedKeys)
+                        : true, // free features are always "activated"
+                ],
+            ];
+        })->toArray();
     }
 }

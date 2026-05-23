@@ -31,7 +31,7 @@
                         <td style="font-size:.72rem;color:#94a3b8;">{{ $ver->created_at->format('d M Y H:i') }}</td>
                         <td>
                             @if($ver->previous_value)
-                            <form method="POST" action="{{ route('master.configs.rollback', Hashids::encode($config->id)) }}" onsubmit="return confirm('Rollback to this version?')">
+                            <form method="POST" action="{{ route('master.configs.rollback', Hashids::encode($config->id)) }}" data-confirm="Rollback ke versi ini? Nilai saat ini akan digantikan." data-confirm-type="warning" data-confirm-title="Rollback Config" data-confirm-ok="Ya, Rollback">
                                 @csrf
                                 <input type="hidden" name="version_id" value="{{ $ver->id }}">
                                 <button type="submit" class="btn btn-warning btn-sm">Rollback</button>

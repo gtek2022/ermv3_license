@@ -92,7 +92,7 @@ class LicenseCompanyController extends Controller
     public function show(string $hash): View
     {
         $license = $this->findOrFail($hash);
-        $license->load(['company', 'licenseApps', 'activeInstallations']);
+        $license->load(['company', 'licenseApps.features', 'activeInstallations']);
         $heartbeatLogs = $license->heartbeatLogs()->orderByDesc('heartbeat_at')->limit(20)->get();
 
         return view('license.companies.show', compact('license', 'heartbeatLogs'));
@@ -166,6 +166,90 @@ class LicenseCompanyController extends Controller
         }
 
         return back()->with('success', 'Policy updated.');
+    }
+
+    /**
+     * Add a feature to a license_app entry.
+     */
+    public function addFeature(Request $request, string $hash): RedirectResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        $data = $request->validate([
+            'license_app_id' => 'required|integer',
+            'feature_key'    => 'required|string|max:100',
+            'valid_until'    => 'nullable|date',
+        ]);
+
+        $licenseApp = \App\Models\LicenseApp::where('id', $data['license_app_id'])
+            ->where('license_company_id', $licenseCompany->id)
+            ->firstOrFail();
+
+        // Prevent duplicate
+        $exists = \App\Models\LicenseAppFeature::where('license_app_id', $licenseApp->id)
+            ->where('feature_key', $data['feature_key'])
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['feature_key' => 'Feature already licensed for this app.']);
+        }
+
+        \App\Models\LicenseAppFeature::create([
+            'license_app_id' => $licenseApp->id,
+            'app_code'       => $licenseApp->app_code,
+            'feature_key'    => $data['feature_key'],
+            'status'         => 'active',
+            'valid_until'    => $data['valid_until'] ?? null,
+            'created_by'     => auth()->id(),
+        ]);
+
+        LicenseLogsAudit::record('feature_added', 'license_app', $licenseApp->id, [
+            'new' => ['feature_key' => $data['feature_key']],
+        ]);
+
+        return back()->with('success', 'Feature "' . $data['feature_key'] . '" added to license.');
+    }
+
+    /**
+     * Remove / revoke a licensed feature.
+     */
+    public function removeFeature(string $hash, int $featureId): RedirectResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        $feature = \App\Models\LicenseAppFeature::findOrFail($featureId);
+
+        // Verify it belongs to this license
+        $licenseApp = \App\Models\LicenseApp::where('id', $feature->license_app_id)
+            ->where('license_company_id', $licenseCompany->id)
+            ->firstOrFail();
+
+        LicenseLogsAudit::record('feature_removed', 'license_app', $licenseApp->id, [
+            'previous' => ['feature_key' => $feature->feature_key],
+        ]);
+
+        $feature->delete();
+
+        return back()->with('success', 'Feature removed from license.');
+    }
+
+    /**
+     * Toggle feature status (active ↔ suspended).
+     */
+    public function toggleFeature(string $hash, int $featureId): RedirectResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        $feature = \App\Models\LicenseAppFeature::findOrFail($featureId);
+
+        \App\Models\LicenseApp::where('id', $feature->license_app_id)
+            ->where('license_company_id', $licenseCompany->id)
+            ->firstOrFail();
+
+        $newStatus = $feature->status === 'active' ? 'suspended' : 'active';
+        $feature->update(['status' => $newStatus]);
+
+        return back()->with('success', 'Feature ' . $newStatus . '.');
     }
 
     /**

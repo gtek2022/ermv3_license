@@ -25,12 +25,12 @@
 
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;padding-top:1rem;border-top:1px solid #f1f5f9;">
                 @if($installation->status === 'active')
-                <form method="POST" action="{{ route('license.installations.revoke', $hash) }}" onsubmit="return confirm('Revoke this installation?')">
+                <form method="POST" action="{{ route('license.installations.revoke', $hash) }}" data-confirm="Revoke instalasi ini? Perangkat tidak bisa menggunakan lisensi sampai diaktifkan ulang." data-confirm-type="warning" data-confirm-title="Revoke Instalasi" data-confirm-ok="Ya, Revoke">
                     @csrf
                     <input type="hidden" name="reason" value="Revoked by admin">
                     <button class="btn btn-warning btn-sm">Revoke</button>
                 </form>
-                <form method="POST" action="{{ route('license.installations.blacklist', $hash) }}" onsubmit="return confirm('Blacklist this fingerprint? It will be permanently rejected.')">
+                <form method="POST" action="{{ route('license.installations.blacklist', $hash) }}" data-confirm="Blacklist fingerprint ini? Perangkat akan ditolak secara permanen." data-confirm-type="danger" data-confirm-title="Blacklist Perangkat" data-confirm-ok="Ya, Blacklist">
                     @csrf
                     <input type="hidden" name="reason" value="Blacklisted by admin">
                     <button class="btn btn-danger btn-sm">Blacklist</button>

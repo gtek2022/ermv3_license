@@ -29,8 +29,8 @@
 
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;padding-top:1rem;border-top:1px solid #f1f5f9;">
                 @if($license->status === 'active')
-                <form method="POST" action="{{ route('license.companies.suspend', $hash) }}" onsubmit="return confirm('Suspend?')">@csrf<button class="btn btn-warning btn-sm">Suspend</button></form>
-                <form method="POST" action="{{ route('license.companies.cancel', $hash) }}" onsubmit="return confirm('Cancel? Cannot be undone.')">@csrf<button class="btn btn-danger btn-sm">Cancel</button></form>
+                <form method="POST" action="{{ route('license.companies.suspend', $hash) }}" data-confirm="Suspend lisensi ini?" data-confirm-type="warning" data-confirm-title="Suspend Lisensi" data-confirm-ok="Ya, Suspend">@csrf<button class="btn btn-warning btn-sm">Suspend</button></form>
+                <form method="POST" action="{{ route('license.companies.cancel', $hash) }}" data-confirm="Batalkan lisensi ini? Tindakan ini tidak dapat dibatalkan." data-confirm-type="danger" data-confirm-title="Batalkan Lisensi" data-confirm-ok="Ya, Batalkan">@csrf<button class="btn btn-danger btn-sm">Cancel</button></form>
                 @elseif($license->status === 'suspended')
                 <form method="POST" action="{{ route('license.companies.reinstate', $hash) }}">@csrf<button class="btn btn-success btn-sm">Reinstate</button></form>
                 @endif
@@ -89,7 +89,7 @@
                     <strong>ERMv3 harus diaktifkan ulang dengan kunci baru.</strong>
                 </div>
                 <form method="POST" action="{{ route('license.companies.regenerate-key', $hash) }}"
-                    onsubmit="return confirm('Generate kunci baru? Kunci lama tidak berlaku lagi dan ERMv3 harus diaktifkan ulang.')">
+                    data-confirm="Generate kunci baru? Kunci lama tidak berlaku lagi dan ERMv3 harus diaktifkan ulang." data-confirm-type="danger" data-confirm-title="Generate Kunci Baru" data-confirm-ok="Ya, Generate">
                     @csrf
                     <div style="display:flex;gap:.5rem;align-items:center;">
                         <input type="text" name="reason" class="form-control"
@@ -120,45 +120,267 @@ function retrieveKey(hash) {
         btn.textContent = 'Tampilkan Kunci';
         result.style.display = 'block';
         if (data.success) {
-            result.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.6rem .85rem;">'
-                + '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.25rem;">✅ Kunci Berhasil Dipulihkan</div>'
-                + '<div style="font-family:monospace;font-size:.88rem;color:#1a3a6b;font-weight:700;letter-spacing:.05em;">' + data.key + '</div>'
-                + '<div style="font-size:.68rem;color:#64748b;margin-top:.3rem;">Salin kunci ini sekarang. Halaman ini tidak menyimpan kunci secara permanen.</div>'
-                + '</div>';
+            // Show in modal for better UX
+            GModal.alert({
+                type: 'success',
+                title: 'Kunci Lisensi',
+                message: '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0;">'
+                    + '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.35rem;">Kunci Lisensi Aplikasi:</div>'
+                    + '<div style="font-family:monospace;font-size:.95rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
+                    + '</div>'
+                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Salin kunci ini sekarang dan simpan di tempat aman.</p>',
+                confirmText: 'Tutup',
+            });
+            result.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.5rem .75rem;font-size:.72rem;color:#166534;">✅ Kunci berhasil dipulihkan — lihat di modal.</div>';
         } else {
-            result.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.6rem .85rem;font-size:.78rem;color:#991b1b;">'
-                + '❌ ' + data.message + '</div>';
+            GToast.danger(data.message);
+            result.style.display = 'none';
         }
     })
     .catch(() => {
         btn.disabled = false;
         btn.textContent = 'Tampilkan Kunci';
-        result.style.display = 'block';
-        result.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.6rem .85rem;font-size:.78rem;color:#991b1b;">Gagal menghubungi server.</div>';
+        GToast.danger('Gagal menghubungi server.');
     });
+}
+
+function retrieveFLKLic(featureId, appHash) {
+    var btn = event.target;
+    btn.disabled = true; btn.textContent = '...';
+
+    fetch('/master/apps/' + appHash + '/features/' + featureId + '/retrieve-key', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false; btn.textContent = 'Lihat FLK';
+        if (data.success) {
+            GModal.alert({
+                type: 'info',
+                title: 'Feature License Key (FLK)',
+                message: '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0;">'
+                    + '<div style="font-size:.68rem;color:#1e40af;font-weight:700;margin-bottom:.35rem;">Feature License Key:</div>'
+                    + '<div style="font-family:monospace;font-size:.9rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
+                    + '</div>'
+                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Berikan kunci ini ke client untuk aktivasi fitur di ERMv3.</p>',
+                confirmText: 'Tutup',
+            });
+        } else {
+            GToast.danger(data.message);
+        }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Lihat FLK'; GToast.danger('Gagal menghubungi server.'); });
 }
 </script>
 @endpush
 <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-header"><span class="card-title">Licensed Apps ({{ $license->licenseApps?->count() ?? 0 }})</span></div>
+    <div class="card-header"><span class="card-title">Licensed Apps &amp; Features</span></div>
     <div class="card-body" style="padding:0;">
-        <div class="table-wrap">
-            <table>
-                <thead><tr><th>App</th><th>Status</th><th>Max Installs</th><th>Valid Until</th></tr></thead>
-                <tbody>
-                    @forelse($license->licenseApps ?? [] as $la)
-                    <tr>
-                        <td><span class="badge badge-info">{{ $la->app_code }}</span></td>
-                        <td><span class="badge {{ $la->status === 'active' ? 'badge-success' : 'badge-secondary' }}">{{ $la->status }}</span></td>
-                        <td style="text-align:center;">{{ $la->max_installations }}</td>
-                        <td style="font-size:.75rem;">{{ $la->valid_until?->format('d M Y') ?? '∞' }}</td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.5rem;">No apps licensed.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+        @forelse($license->licenseApps ?? [] as $la)
+        @php
+            // Load ALL master features for this app (active or not)
+            $allMasterFeatures = \App\Models\MasterAppFeature::where('app_code', $la->app_code)->get();
+            $hasFeatureRestrictions = $la->features->isNotEmpty();
+            $activeCount = $la->features->where('status','active')->count();
+        @endphp
+        <div style="border-bottom:1px solid #f1f5f9;padding:1rem 1.25rem;">
+
+            {{-- App header --}}
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <span class="badge badge-info" style="font-size:.75rem;padding:.25rem .65rem;">{{ $la->app_code }}</span>
+                <span class="badge {{ $la->status === 'active' ? 'badge-success' : 'badge-secondary' }}">{{ $la->status }}</span>
+                <span style="font-size:.75rem;color:#64748b;">Max: {{ $la->max_installations }} instalasi</span>
+                @if($la->valid_until)
+                <span style="font-size:.72rem;color:#94a3b8;">s/d {{ $la->valid_until->format('d M Y') }}</span>
+                @endif
+                @if(!$hasFeatureRestrictions)
+                    <span class="badge badge-green" style="margin-left:auto;">Semua Fitur Aktif</span>
+                @else
+                    <span class="badge badge-yellow" style="margin-left:auto;">{{ $activeCount }} / {{ $allMasterFeatures->count() }} Fitur Aktif</span>
+                @endif
+            </div>
+
+            @if($allMasterFeatures->isEmpty())
+                <div style="font-size:.78rem;color:#94a3b8;padding:.5rem 0;">
+                    Belum ada fitur terdaftar. Tambahkan di <a href="{{ route('master.apps.show', Hashids::encode(\App\Models\MasterApp::where('code',$la->app_code)->value('id'))) }}" style="color:#1a3a6b;">Master → Apps → {{ $la->app_code }}</a>.
+                </div>
+            @else
+            {{-- Feature table --}}
+            <div class="table-wrap">
+                <table style="font-size:.78rem;">
+                    <thead>
+                        <tr>
+                            <th>Fitur</th>
+                            <th>Tipe</th>
+                            <th>Status Master</th>
+                            <th>Status Lisensi</th>
+                            <th>Kunci FLK</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($allMasterFeatures as $feat)
+                        @php
+                            $licensedFeat   = $la->features->firstWhere('feature_key', $feat->feature_key);
+                            $isInLicense    = (bool) $licensedFeat;
+                            $licStatus      = $licensedFeat?->status ?? null;
+                            $isLicActive    = $isInLicense && $licStatus === 'active';
+                            $isSuspended    = $isInLicense && $licStatus === 'suspended';
+                            $requiresLic    = $feat->requires_license;
+
+                            // Row background
+                            if (!$feat->is_active) {
+                                $rowBg = 'background:#fef2f2;';
+                            } elseif ($isLicActive) {
+                                $rowBg = 'background:#f0fdf4;';
+                            } elseif ($isSuspended) {
+                                $rowBg = 'background:#fffbeb;';
+                            } elseif (!$hasFeatureRestrictions) {
+                                $rowBg = 'background:#f0fdf4;'; // all licensed
+                            } else {
+                                $rowBg = '';
+                            }
+                        @endphp
+                        <tr style="{{ $rowBg }}">
+                            {{-- Feature name --}}
+                            <td>
+                                <div style="font-weight:600;">{{ $feat->name }}</div>
+                                <div style="font-size:.65rem;color:#94a3b8;font-family:monospace;">{{ $feat->feature_key }}</div>
+                                @if($feat->category)
+                                <span style="font-size:.58rem;background:#f1f5f9;border-radius:3px;padding:.02rem .28rem;color:#64748b;">{{ $feat->category }}</span>
+                                @endif
+                            </td>
+
+                            {{-- Type --}}
+                            <td>
+                                @if($requiresLic)
+                                    <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.6rem;">🔑 Licensed</span>
+                                @else
+                                    <span class="badge badge-info" style="font-size:.6rem;">Free</span>
+                                @endif
+                            </td>
+
+                            {{-- Master status (admin toggle) --}}
+                            <td>
+                                @php $masterAppId = \App\Models\MasterApp::where('code',$la->app_code)->value('id'); @endphp
+                                <form method="POST" action="{{ route('master.apps.features.toggle', [Hashids::encode($masterAppId), $feat->id]) }}">
+                                    @csrf
+                                    <button type="submit"
+                                        class="badge {{ $feat->is_active ? 'badge-success' : 'badge-secondary' }}"
+                                        style="border:none;cursor:pointer;padding:.2rem .5rem;font-size:.6rem;"
+                                        title="Toggle aktif/nonaktif di semua lisensi">
+                                        {{ $feat->is_active ? '✓ Aktif' : '✗ Nonaktif' }}
+                                    </button>
+                                </form>
+                            </td>
+
+                            {{-- License status --}}
+                            <td>
+                                @if(!$hasFeatureRestrictions)
+                                    <span class="badge badge-success" style="font-size:.6rem;">✓ Semua</span>
+                                @elseif($isLicActive)
+                                    <span class="badge badge-success" style="font-size:.6rem;">✓ Aktif</span>
+                                @elseif($isSuspended)
+                                    <span class="badge badge-warning" style="font-size:.6rem;">⏸ Suspend</span>
+                                @else
+                                    <span class="badge badge-secondary" style="font-size:.6rem;">✗ Tidak</span>
+                                @endif
+                            </td>
+
+                            {{-- FLK key management (only for requires_license features) --}}
+                            <td>
+                                @if($requiresLic)
+                                    @if($feat->feature_license_key_hash)
+                                        <div style="display:flex;flex-direction:column;gap:.25rem;">
+                                            <button onclick="retrieveFLKLic({{ $feat->id }}, '{{ Hashids::encode($masterAppId) }}')"
+                                                class="btn btn-secondary btn-sm" style="font-size:.62rem;padding:.2rem .5rem;">
+                                                Lihat FLK
+                                            </button>
+                                            <form method="POST" action="{{ route('master.apps.features.regenerate-key', [Hashids::encode($masterAppId), $feat->id]) }}"
+                                                data-confirm="Regenerate kunci FLK? Semua aktivasi lama akan dicabut." data-confirm-type="danger" data-confirm-title="Regenerate Kunci FLK" data-confirm-ok="Ya, Regenerate">
+                                                @csrf
+                                                <button type="submit" class="btn btn-warning btn-sm" style="font-size:.62rem;padding:.2rem .5rem;">
+                                                    Regenerate
+                                                </button>
+                                            </form>
+                                            <div id="flk-lic-{{ $feat->id }}" style="display:none;"></div>
+                                            @php
+                                                $actCount = \App\Models\LicenseFeatureActivation::where('feature_key',$feat->feature_key)->where('app_code',$la->app_code)->where('status','active')->count();
+                                            @endphp
+                                            @if($actCount > 0)
+                                            <span style="font-size:.62rem;color:#166534;">{{ $actCount }} instalasi aktif</span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span style="font-size:.65rem;color:#94a3b8;font-style:italic;">Belum ada kunci</span>
+                                    @endif
+                                @else
+                                    <span style="font-size:.65rem;color:#94a3b8;">—</span>
+                                @endif
+                            </td>
+
+                            {{-- Actions --}}
+                            <td>
+                                <div style="display:flex;flex-direction:column;gap:.25rem;">
+                                    @if($isLicActive)
+                                        {{-- Suspend from license --}}
+                                        <form method="POST" action="{{ route('license.companies.features.toggle', [$hash, $licensedFeat->id]) }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-warning btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">Suspend</button>
+                                        </form>
+                                        {{-- Remove from license --}}
+                                        <form method="POST" action="{{ route('license.companies.features.remove', [$hash, $licensedFeat->id]) }}"
+                                            data-confirm="Hapus fitur ini dari lisensi?" data-confirm-type="danger" data-confirm-title="Hapus Fitur" data-confirm-ok="Ya, Hapus">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="btn btn-danger btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">Hapus</button>
+                                        </form>
+                                    @elseif($isSuspended)
+                                        {{-- Reinstate --}}
+                                        <form method="POST" action="{{ route('license.companies.features.toggle', [$hash, $licensedFeat->id]) }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">Aktifkan</button>
+                                        </form>
+                                    @elseif($hasFeatureRestrictions)
+                                        {{-- Add to license --}}
+                                        <form method="POST" action="{{ route('license.companies.features.add', $hash) }}">
+                                            @csrf
+                                            <input type="hidden" name="license_app_id" value="{{ $la->id }}">
+                                            <input type="hidden" name="feature_key" value="{{ $feat->feature_key }}">
+                                            <button type="submit" class="btn btn-primary btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">+ Tambah</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Quick add all unlicensed --}}
+            @if($hasFeatureRestrictions)
+            @php $unlicensedFeats = $allMasterFeatures->filter(fn($f) => !$la->features->contains('feature_key', $f->feature_key)); @endphp
+            @if($unlicensedFeats->isNotEmpty())
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f1f5f9;">
+                <span style="font-size:.72rem;color:#64748b;font-weight:600;">Tambah cepat:</span>
+                @foreach($unlicensedFeats as $feat)
+                <form method="POST" action="{{ route('license.companies.features.add', $hash) }}" style="display:inline;">
+                    @csrf
+                    <input type="hidden" name="license_app_id" value="{{ $la->id }}">
+                    <input type="hidden" name="feature_key" value="{{ $feat->feature_key }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="font-size:.68rem;">+ {{ $feat->name }}</button>
+                </form>
+                @endforeach
+            </div>
+            @endif
+            @endif
+            @endif
+
         </div>
+        @empty
+        <div style="text-align:center;color:#94a3b8;padding:2rem;">No apps licensed.</div>
+        @endforelse
     </div>
 </div>
 
@@ -168,18 +390,26 @@ function retrieveKey(hash) {
     <div class="card-body" style="padding:0;">
         <div class="table-wrap">
             <table>
-                <thead><tr><th>UUID</th><th>App</th><th>IP</th><th>Status</th><th>Time</th></tr></thead>
+                <thead><tr><th>Server / Host</th><th>App</th><th>IP</th><th>Versi</th><th>Status</th><th>Waktu</th></tr></thead>
                 <tbody>
                     @forelse($heartbeatLogs as $hb)
+                    @php
+                        $inst = $license->activeInstallations->firstWhere('installation_uuid', $hb->installation_uuid);
+                        $hostLabel = $inst?->hostname ?? $inst?->domain ?? $hb->domain ?? '—';
+                    @endphp
                     <tr>
-                        <td style="font-family:monospace;font-size:.7rem;">{{ substr($hb->installation_uuid,0,16) }}…</td>
+                        <td>
+                            <div style="font-size:.8rem;font-weight:600;">{{ $hostLabel }}</div>
+                            <div style="font-size:.65rem;color:#94a3b8;">{{ $hb->app_version ?? '—' }}</div>
+                        </td>
                         <td><span class="badge badge-info">{{ $hb->app_code }}</span></td>
                         <td style="font-size:.75rem;color:#64748b;">{{ $hb->ip_address ?? '—' }}</td>
+                        <td style="font-size:.72rem;color:#64748b;">{{ $hb->app_version ?? '—' }}</td>
                         <td><span class="badge {{ $hb->status === 'verified' ? 'badge-success' : 'badge-danger' }}">{{ $hb->status }}</span></td>
                         <td style="font-size:.72rem;color:#94a3b8;">{{ $hb->heartbeat_at->diffForHumans() }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem;">No heartbeats yet.</td></tr>
+                    <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:1.5rem;">Belum ada heartbeat.</td></tr>
                     @endforelse
                 </tbody>
             </table>

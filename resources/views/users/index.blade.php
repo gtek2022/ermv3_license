@@ -30,7 +30,7 @@
                             <div style="display:flex;gap:.35rem;">
                                 <a href="{{ route('users.edit', Hashids::encode($user->id)) }}" class="btn btn-secondary btn-sm">Edit</a>
                                 @if($user->id !== auth()->id())
-                                <form method="POST" action="{{ route('users.destroy', Hashids::encode($user->id)) }}" onsubmit="return confirm('Delete this user?')">
+                                <form method="POST" action="{{ route('users.destroy', Hashids::encode($user->id)) }}" data-confirm="Hapus user ini?" data-confirm-type="danger" data-confirm-title="Hapus User" data-confirm-ok="Ya, Hapus">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                 </form>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Models\LogAudit;
+use App\Models\LicenseFeatureActivation;
 use App\Models\MasterApp;
 use App\Models\MasterAppFeature;
 use Illuminate\Http\RedirectResponse;
@@ -52,7 +53,15 @@ class AppController extends Controller
     {
         $app = $this->findOrFail($hash);
         $features = $app->features()->orderBy('category')->orderBy('name')->get();
-        return view('master.apps.show', compact('app', 'features'));
+
+        // Load all active license_apps for this app_code so we can offer
+        // "License this feature to..." directly from the master app page
+        $licenseApps = \App\Models\LicenseApp::with('licenseCompany.company')
+            ->where('app_code', $app->code)
+            ->where('status', 'active')
+            ->get();
+
+        return view('master.apps.show', compact('app', 'features', 'licenseApps'));
     }
 
     public function edit(string $hash): View
@@ -87,29 +96,86 @@ class AppController extends Controller
         $app = $this->findOrFail($hash);
 
         $data = $request->validate([
-            'feature_key' => 'required|string|max:100',
-            'name'        => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category'    => 'nullable|string|max:50',
+            'feature_key'      => 'required|string|max:100',
+            'name'             => 'required|string|max:255',
+            'description'      => 'nullable|string',
+            'category'         => 'nullable|string|max:50',
+            'requires_license' => 'boolean',
         ]);
 
-        MasterAppFeature::create([
-            'app_code'    => $app->code,
-            'feature_key' => $data['feature_key'],
-            'name'        => $data['name'],
-            'description' => $data['description'] ?? null,
-            'category'    => $data['category'] ?? null,
-            'created_by'  => auth()->id(),
+        $requiresLicense = $request->boolean('requires_license');
+
+        $feature = MasterAppFeature::create([
+            'app_code'         => $app->code,
+            'feature_key'      => $data['feature_key'],
+            'name'             => $data['name'],
+            'description'      => $data['description'] ?? null,
+            'category'         => $data['category'] ?? null,
+            'is_active'        => true,
+            'requires_license' => $requiresLicense,
+            'created_by'       => auth()->id(),
         ]);
 
-        return back()->with('success', 'Feature added.');
+        $plainKey = null;
+        if ($requiresLicense) {
+            $plainKey = $feature->generateFeatureLicenseKey();
+        }
+
+        $message = 'Feature "' . $feature->name . '" added.';
+        if ($plainKey) {
+            $message .= ' Feature License Key: ' . $plainKey . ' — Catat segera, tidak akan ditampilkan lagi.';
+        }
+
+        return back()->with('success', $message);
     }
 
-    public function destroyFeature(string $hash, int $featureId): RedirectResponse
+    public function toggleFeature(string $hash, int $featureId): RedirectResponse
     {
         $this->findOrFail($hash);
-        MasterAppFeature::findOrFail($featureId)->delete();
-        return back()->with('success', 'Feature removed.');
+        $feature = MasterAppFeature::findOrFail($featureId);
+        $feature->update(['is_active' => ! $feature->is_active]);
+
+        return back()->with('success', 'Feature "' . $feature->name . '" ' . ($feature->is_active ? 'diaktifkan' : 'dinonaktifkan') . '.');
+    }
+
+    public function retrieveFeatureKey(string $hash, int $featureId): \Illuminate\Http\JsonResponse
+    {
+        $this->findOrFail($hash);
+        $feature = MasterAppFeature::findOrFail($featureId);
+
+        if (! $feature->requires_license) {
+            return response()->json(['success' => false, 'message' => 'Feature ini tidak memerlukan lisensi.'], 400);
+        }
+
+        $key = $feature->retrieveFeatureLicenseKey();
+
+        if (! $key) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kunci tidak dapat dipulihkan. APP_KEY mungkin telah berubah. Gunakan Regenerate.',
+            ], 422);
+        }
+
+        return response()->json(['success' => true, 'key' => $key]);
+    }
+
+    public function regenerateFeatureKey(string $hash, int $featureId): RedirectResponse
+    {
+        $this->findOrFail($hash);
+        $feature = MasterAppFeature::findOrFail($featureId);
+
+        if (! $feature->requires_license) {
+            return back()->withErrors(['error' => 'Feature ini tidak memerlukan lisensi.']);
+        }
+
+        $newKey = $feature->generateFeatureLicenseKey();
+
+        // Revoke all existing activations since key changed
+        LicenseFeatureActivation::where('feature_key', $feature->feature_key)
+            ->where('app_code', $feature->app_code)
+            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+
+        return back()->with('success', 'Kunci baru: ' . $newKey . ' — Semua aktivasi lama dicabut. ERMv3 harus aktivasi ulang.');
     }
 
     private function findOrFail(string $hash): MasterApp

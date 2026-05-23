@@ -44,6 +44,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{hash}', [AppController::class, 'update'])->name('update');
         Route::post('/{hash}/features', [AppController::class, 'storeFeature'])->name('features.store');
         Route::delete('/{hash}/features/{featureId}', [AppController::class, 'destroyFeature'])->name('features.destroy');
+        Route::post('/{hash}/features/{featureId}/toggle', [AppController::class, 'toggleFeature'])->name('features.toggle');
+        Route::get('/{hash}/features/{featureId}/retrieve-key', [AppController::class, 'retrieveFeatureKey'])->name('features.retrieve-key');
+        Route::post('/{hash}/features/{featureId}/regenerate-key', [AppController::class, 'regenerateFeatureKey'])->name('features.regenerate-key');
     });
 
     // ── Master: Configs ───────────────────────────────────────────────────────
@@ -80,6 +83,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{hash}/policy', [LicenseCompanyController::class, 'updatePolicy'])->name('policy.update');
         Route::get('/{hash}/retrieve-key', [LicenseCompanyController::class, 'retrieveKey'])->name('retrieve-key');
         Route::post('/{hash}/regenerate-key', [LicenseCompanyController::class, 'regenerateKey'])->name('regenerate-key');
+        Route::post('/{hash}/features', [LicenseCompanyController::class, 'addFeature'])->name('features.add');
+        Route::delete('/{hash}/features/{featureId}', [LicenseCompanyController::class, 'removeFeature'])->name('features.remove');
+        Route::post('/{hash}/features/{featureId}/toggle', [LicenseCompanyController::class, 'toggleFeature'])->name('features.toggle');
     });
 
     // ── License: Installations ────────────────────────────────────────────────

@@ -28,7 +28,7 @@
                             </td>
                             <td style="text-align:center;">{{ $flag->rollout_percentage }}%</td>
                             <td>
-                                <form method="POST" action="{{ route('master.flags.destroy', Hashids::encode($flag->id)) }}" onsubmit="return confirm('Delete flag?')">
+                                <form method="POST" action="{{ route('master.flags.destroy', Hashids::encode($flag->id)) }}" data-confirm="Hapus feature flag ini?" data-confirm-type="danger" data-confirm-title="Hapus Flag" data-confirm-ok="Ya, Hapus">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                 </form>

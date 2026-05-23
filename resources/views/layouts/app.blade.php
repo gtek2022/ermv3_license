@@ -467,6 +467,153 @@
             .sidebar { transform: translateX(-100%); }
             .main-wrapper { margin-left: 0; }
         }
+
+        /* ══════════════════════════════════════════════════════════
+           MODAL SYSTEM
+        ══════════════════════════════════════════════════════════ */
+
+        /* Backdrop */
+        .g-modal-backdrop {
+            display: none;
+            position: fixed; inset: 0; z-index: 9000;
+            background: rgba(15,42,82,.72);
+            backdrop-filter: blur(3px);
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            animation: gModalBdIn .15s ease both;
+        }
+        .g-modal-backdrop.open { display: flex; }
+        @keyframes gModalBdIn { from{opacity:0} to{opacity:1} }
+
+        /* Modal box */
+        .g-modal {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+            animation: gModalIn .18s cubic-bezier(.22,1,.36,1) both;
+        }
+        @keyframes gModalIn {
+            from { opacity:0; transform:translateY(12px) scale(.97); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+
+        .g-modal-accent { height: 4px; }
+        .g-modal-accent.success { background: linear-gradient(90deg,#16a34a,#22c55e); }
+        .g-modal-accent.danger  { background: linear-gradient(90deg,#dc2626,#ef4444); }
+        .g-modal-accent.warning { background: linear-gradient(90deg,#d97706,#f59e0b); }
+        .g-modal-accent.info    { background: linear-gradient(90deg,#1a3a6b,#29abe2); }
+
+        .g-modal-body {
+            padding: 1.75rem 1.75rem 1.5rem;
+            text-align: center;
+        }
+
+        .g-modal-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto .85rem;
+        }
+        .g-modal-icon.success { background: #f0fdf4; }
+        .g-modal-icon.danger  { background: #fef2f2; }
+        .g-modal-icon.warning { background: #fffbeb; }
+        .g-modal-icon.info    { background: #eff6ff; }
+
+        .g-modal-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: .4rem;
+            letter-spacing: -.01em;
+        }
+
+        .g-modal-message {
+            font-size: .82rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 1.25rem;
+        }
+
+        .g-modal-actions {
+            display: flex;
+            gap: .65rem;
+            justify-content: center;
+        }
+
+        .g-modal-actions .btn { min-width: 100px; justify-content: center; }
+
+        /* ══════════════════════════════════════════════════════════
+           TOAST SYSTEM
+        ══════════════════════════════════════════════════════════ */
+
+        .g-toast-container {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            pointer-events: none;
+        }
+
+        .g-toast {
+            display: flex;
+            align-items: flex-start;
+            gap: .65rem;
+            padding: .75rem 1rem;
+            border-radius: 10px;
+            min-width: 280px;
+            max-width: 380px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.15);
+            pointer-events: all;
+            animation: gToastIn .25s cubic-bezier(.22,1,.36,1) both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .g-toast.removing { animation: gToastOut .2s ease forwards; }
+
+        @keyframes gToastIn {
+            from { opacity:0; transform:translateX(24px); }
+            to   { opacity:1; transform:translateX(0); }
+        }
+        @keyframes gToastOut {
+            from { opacity:1; transform:translateX(0); max-height:80px; margin-bottom:0; }
+            to   { opacity:0; transform:translateX(24px); max-height:0; margin-bottom:-.5rem; }
+        }
+
+        .g-toast-progress {
+            position: absolute;
+            bottom: 0; left: 0;
+            height: 3px;
+            border-radius: 0 0 10px 10px;
+            animation: gToastProgress linear forwards;
+        }
+        @keyframes gToastProgress { from{width:100%} to{width:0} }
+
+        .g-toast.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .g-toast.success .g-toast-progress { background: #16a34a; }
+        .g-toast.danger  { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .g-toast.danger  .g-toast-progress { background: #dc2626; }
+        .g-toast.warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+        .g-toast.warning .g-toast-progress { background: #d97706; }
+        .g-toast.info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+        .g-toast.info    .g-toast-progress { background: #1a3a6b; }
+
+        .g-toast-icon { flex-shrink: 0; margin-top: 1px; }
+        .g-toast-text { flex: 1; font-size: .82rem; font-weight: 500; line-height: 1.45; }
+        .g-toast-close {
+            background: none; border: none; cursor: pointer;
+            opacity: .5; padding: 0; line-height: 1;
+            font-size: .9rem; flex-shrink: 0;
+            transition: opacity .15s;
+        }
+        .g-toast-close:hover { opacity: 1; }
     </style>
     @stack('styles')
 </head><body>
@@ -568,27 +715,245 @@
         </header>
 
         <main class="main-content">
-            @if(session('success'))
-            <div class="alert alert-success">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                {{ session('success') }}
-            </div>
-            @endif
-
-            @if(session('error') || $errors->any())
-            <div class="alert alert-danger">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <div>
-                    @if(session('error')){{ session('error') }}@endif
-                    @foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach
-                </div>
-            </div>
-            @endif
-
             @yield('content')
         </main>
     </div>
 
+    {{-- ══ MODAL SYSTEM ══════════════════════════════════════════════════════ --}}
+    <div class="g-modal-backdrop" id="gModalBackdrop" onclick="GModal._backdropClick(event)">
+        <div class="g-modal" id="gModal">
+            <div class="g-modal-accent" id="gModalAccent"></div>
+            <div class="g-modal-body">
+                <div class="g-modal-icon" id="gModalIcon">
+                    <svg id="gModalIconSvg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></svg>
+                </div>
+                <div class="g-modal-title" id="gModalTitle"></div>
+                <div class="g-modal-message" id="gModalMessage"></div>
+                <div class="g-modal-actions" id="gModalActions"></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ TOAST CONTAINER ════════════════════════════════════════════════════ --}}
+    <div class="g-toast-container" id="gToastContainer"></div>
+
+    {{-- ══ FLASH → TOAST (server-side sessions) ══════════════════════════════ --}}
+    @if(session('success'))
+    <script>document.addEventListener('DOMContentLoaded',function(){GToast.success(@json(session('success')));});</script>
+    @endif
+    @if(session('error'))
+    <script>document.addEventListener('DOMContentLoaded',function(){GToast.danger(@json(session('error')));});</script>
+    @endif
+    @if(session('warning'))
+    <script>document.addEventListener('DOMContentLoaded',function(){GToast.warning(@json(session('warning')));});</script>
+    @endif
+    @if($errors->any())
+    <script>document.addEventListener('DOMContentLoaded',function(){
+        @foreach($errors->all() as $e)
+        GToast.danger(@json($e));
+        @endforeach
+    });</script>
+    @endif
+
     @stack('scripts')
+
+    <script>
+    /* ══════════════════════════════════════════════════════════════════════════
+       GModal — Gemilang Modal System
+       Usage:
+         GModal.confirm({ title, message, type, confirmText, cancelText, onConfirm })
+         GModal.alert({ title, message, type })
+         GModal.danger({ title, message, onConfirm })
+         GModal.success({ title, message })
+    ══════════════════════════════════════════════════════════════════════════ */
+    window.GModal = (function() {
+        var _cb = null;
+
+        var _icons = {
+            success: '<polyline points="20 6 9 17 4 12"/>',
+            danger:  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+            warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+            info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+        };
+
+        var _btnColors = {
+            success: 'btn-success',
+            danger:  'btn-danger',
+            warning: 'btn-warning',
+            info:    'btn-primary',
+        };
+
+        function show(opts) {
+            var type        = opts.type || 'info';
+            var title       = opts.title || 'Konfirmasi';
+            var message     = opts.message || '';
+            var confirmText = opts.confirmText || 'Ya, Lanjutkan';
+            var cancelText  = opts.cancelText || 'Batal';
+            var showCancel  = opts.showCancel !== false;
+
+            _cb = opts.onConfirm || null;
+
+            document.getElementById('gModalAccent').className = 'g-modal-accent ' + type;
+            document.getElementById('gModalIcon').className   = 'g-modal-icon ' + type;
+            document.getElementById('gModalIconSvg').innerHTML = _icons[type] || _icons.info;
+            document.getElementById('gModalTitle').textContent   = title;
+            document.getElementById('gModalMessage').innerHTML   = message;
+
+            var actions = document.getElementById('gModalActions');
+            actions.innerHTML = '';
+
+            if (showCancel) {
+                var cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn btn-secondary';
+                cancelBtn.textContent = cancelText;
+                cancelBtn.onclick = function() { close(); };
+                actions.appendChild(cancelBtn);
+            }
+
+            var confirmBtn = document.createElement('button');
+            confirmBtn.className = 'btn ' + (_btnColors[type] || 'btn-primary');
+            confirmBtn.textContent = confirmText;
+            confirmBtn.onclick = function() {
+                close();
+                if (_cb) _cb();
+            };
+            actions.appendChild(confirmBtn);
+
+            var bd = document.getElementById('gModalBackdrop');
+            bd.classList.add('open');
+            document.body.style.overflow = 'hidden';
+
+            // Re-trigger animation
+            var modal = document.getElementById('gModal');
+            modal.style.animation = 'none';
+            modal.offsetHeight;
+            modal.style.animation = '';
+        }
+
+        function close() {
+            document.getElementById('gModalBackdrop').classList.remove('open');
+            document.body.style.overflow = '';
+            _cb = null;
+        }
+
+        function _backdropClick(e) {
+            if (e.target === document.getElementById('gModalBackdrop')) close();
+        }
+
+        // Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('gModalBackdrop').classList.contains('open')) {
+                close();
+            }
+        });
+
+        // Shorthand methods
+        function confirm(opts) {
+            show(Object.assign({ type: 'warning', showCancel: true }, opts));
+        }
+
+        function danger(opts) {
+            show(Object.assign({ type: 'danger', showCancel: true, confirmText: 'Ya, Hapus' }, opts));
+        }
+
+        function alert(opts) {
+            show(Object.assign({ showCancel: false, confirmText: 'OK' }, opts));
+        }
+
+        function success(opts) {
+            show(Object.assign({ type: 'success', showCancel: false, confirmText: 'OK' }, opts));
+        }
+
+        return { show, close, confirm, danger, alert, success, _backdropClick };
+    })();
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       GToast — Gemilang Toast System
+       Usage:
+         GToast.success('Berhasil disimpan.')
+         GToast.danger('Terjadi kesalahan.')
+         GToast.warning('Perhatian!')
+         GToast.info('Info.')
+         GToast.show({ type, message, duration })
+    ══════════════════════════════════════════════════════════════════════════ */
+    window.GToast = (function() {
+        var _icons = {
+            success: '<polyline points="20 6 9 17 4 12"/>',
+            danger:  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+            warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+            info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+        };
+
+        function show(opts) {
+            var type     = typeof opts === 'string' ? 'info' : (opts.type || 'info');
+            var message  = typeof opts === 'string' ? opts : opts.message;
+            var duration = (typeof opts === 'object' && opts.duration) ? opts.duration : 4000;
+
+            var container = document.getElementById('gToastContainer');
+            var toast = document.createElement('div');
+            toast.className = 'g-toast ' + type;
+
+            toast.innerHTML =
+                '<svg class="g-toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (_icons[type] || _icons.info) + '</svg>' +
+                '<span class="g-toast-text">' + message + '</span>' +
+                '<button class="g-toast-close" onclick="GToast._remove(this.parentElement)">&#x2715;</button>' +
+                '<div class="g-toast-progress" style="animation-duration:' + duration + 'ms"></div>';
+
+            container.appendChild(toast);
+
+            setTimeout(function() { GToast._remove(toast); }, duration);
+        }
+
+        function _remove(el) {
+            if (!el || el.classList.contains('removing')) return;
+            el.classList.add('removing');
+            setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 220);
+        }
+
+        return {
+            show:    show,
+            success: function(msg, dur) { show({ type:'success', message:msg, duration:dur||4000 }); },
+            danger:  function(msg, dur) { show({ type:'danger',  message:msg, duration:dur||5000 }); },
+            warning: function(msg, dur) { show({ type:'warning', message:msg, duration:dur||4500 }); },
+            info:    function(msg, dur) { show({ type:'info',    message:msg, duration:dur||4000 }); },
+            _remove: _remove,
+        };
+    })();
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       Replace all native confirm() calls on forms with data-confirm attribute
+       Usage: <form data-confirm="Yakin hapus?"> or <button data-confirm="...">
+    ══════════════════════════════════════════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', function() {
+        // Forms with data-confirm
+        document.querySelectorAll('form[data-confirm]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var msg   = form.getAttribute('data-confirm');
+                var type  = form.getAttribute('data-confirm-type') || 'danger';
+                var title = form.getAttribute('data-confirm-title') || 'Konfirmasi';
+                GModal.confirm({
+                    type: type,
+                    title: title,
+                    message: msg,
+                    confirmText: form.getAttribute('data-confirm-ok') || 'Ya, Lanjutkan',
+                    onConfirm: function() { form.submit(); }
+                });
+            });
+        });
+
+        // Buttons with data-confirm (not inside forms)
+        document.querySelectorAll('button[data-confirm]:not(form button[data-confirm])').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var msg = btn.getAttribute('data-confirm');
+                GModal.confirm({
+                    message: msg,
+                    onConfirm: function() { btn.closest('form') && btn.closest('form').submit(); }
+                });
+            });
+        });
+    });
+    </script>
 </body>
 </html>

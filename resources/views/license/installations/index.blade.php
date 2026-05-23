@@ -30,7 +30,7 @@
                     <tr>
                         <td>
                             <div style="font-weight:600;font-size:.8rem;">{{ $inst->hostname ?? $inst->domain ?? '—' }}</div>
-                            <div style="font-size:.68rem;color:#94a3b8;font-family:monospace;">{{ substr($inst->installation_uuid, 0, 16) }}…</div>
+                            <div style="font-size:.68rem;color:#94a3b8;">{{ $inst->ip_address ?? '' }}</div>
                         </td>
                         <td><span class="badge badge-info">{{ $inst->app_code }}</span></td>
                         <td style="font-size:.75rem;color:#64748b;">{{ $inst->ip_address ?? '—' }}</td>
