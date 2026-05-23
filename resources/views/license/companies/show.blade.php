@@ -96,12 +96,13 @@
                     <strong>ERMv3 harus diaktifkan ulang dengan kunci baru.</strong>
                 </div>
                 <form method="POST" action="{{ route('license.companies.regenerate-key', $hash) }}"
-                    data-confirm="Generate kunci baru? Kunci lama tidak berlaku lagi dan ERMv3 harus diaktifkan ulang." data-confirm-type="danger" data-confirm-title="Generate Kunci Baru" data-confirm-ok="Ya, Generate">
+                    id="regenerateKeyForm">
                     @csrf
                     <div style="display:flex;gap:.5rem;align-items:center;">
-                        <input type="text" name="reason" class="form-control"
+                        <input type="text" name="reason" id="regenerateReason" class="form-control"
                             placeholder="Alasan (opsional)" style="font-size:.78rem;padding:.35rem .6rem;">
-                        <button type="submit" class="btn btn-danger btn-sm" style="white-space:nowrap;">Generate Kunci Baru</button>
+                        <button type="button" class="btn btn-danger btn-sm" style="white-space:nowrap;"
+                            onclick="confirmRegenerateKey()">Generate Kunci Baru</button>
                     </div>
                 </form>
             </div>
@@ -111,6 +112,19 @@
 
 @push('scripts')
 <script>
+function confirmRegenerateKey() {
+    GModal.confirm({
+        type: 'danger',
+        title: 'Generate Kunci Baru',
+        message: 'Generate kunci baru? <strong>Kunci lama tidak berlaku lagi</strong> dan ERMv3 harus diaktifkan ulang dengan kunci baru.',
+        confirmText: 'Ya, Generate',
+        cancelText: 'Batal',
+        onConfirm: function() {
+            document.getElementById('regenerateKeyForm').submit();
+        }
+    });
+}
+
 function retrieveKey(hash) {
     var btn = document.getElementById('retrieveBtn');
     var result = document.getElementById('retrieveResult');
