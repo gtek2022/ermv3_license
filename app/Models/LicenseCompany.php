@@ -66,10 +66,12 @@ class LicenseCompany extends Model
 
     /**
      * Hash the license key for safe DB lookup.
+     * Uses the same salt as the package License model so the package's
+     * /api/licensing/v1/activate endpoint can find our keys.
      */
     public static function hashKey(string $key): string
     {
-        return hash_hmac('sha256', $key, config('app.key'));
+        return \LucaLongo\Licensing\Models\License::hashKey($key);
     }
 
     public static function findByKey(string $key): ?static

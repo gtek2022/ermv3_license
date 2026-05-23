@@ -86,8 +86,17 @@ class LicenseCompanyController extends Controller
             'new' => ['key' => substr($key, 0, 8) . '...', 'apps' => $data['app_codes']],
         ]);
 
+        // Sync to package's `licenses` table — required for the
+        // /api/licensing/v1/activate endpoint to find this key.
+        try {
+            $this->syncToPackageLicense($license, $key);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to sync new license to package License: ' . $e->getMessage());
+        }
+
         return redirect()->route('license.companies.show', Hashids::encode($license->id))
-            ->with('success', 'License created. Key: ' . $key);
+            ->with('new_license_key', $key)
+            ->with('success', 'License created.');
     }
 
     public function show(string $hash): View
@@ -310,6 +319,69 @@ class LicenseCompanyController extends Controller
     }
 
     /**
+     * Sync our LicenseCompany record to the package's `licenses` table.
+     * The package's /api/licensing/v1/activate endpoint looks up by key_hash
+     * in the package table, so every key (new or regenerated) must be there.
+     *
+     * @return License The synchronized package License record.
+     */
+    protected function syncToPackageLicense(LicenseCompany $licenseCompany, string $plainKey, ?string $oldKeyHash = null): License
+    {
+        // 1. Find existing package License by old hash (if any)
+        $pkgLicense = null;
+        if ($oldKeyHash) {
+            $pkgLicense = License::where('key_hash', $oldKeyHash)->first();
+        }
+        if (! $pkgLicense) {
+            $pkgLicense = License::where('key_hash', $licenseCompany->license_key_hash)->first();
+        }
+
+        $newKeyHash = License::hashKey($plainKey);
+
+        // Encrypt the key for retrieval (matches package's EncryptedLicenseKeyGenerator behavior)
+        $encryptedKey = encrypt($plainKey);
+
+        $meta = [
+            'product'        => 'license_company',
+            'license_company_id' => $licenseCompany->id,
+            'company_name'   => $licenseCompany->company?->name,
+            'encrypted_key'  => $encryptedKey,
+        ];
+
+        if ($pkgLicense) {
+            // Update existing record
+            $existingMeta = is_array($pkgLicense->meta) ? $pkgLicense->meta : (json_decode($pkgLicense->meta ?? '{}', true) ?: []);
+            // Track previous hash for audit
+            $prev = $existingMeta['previous_key_hashes'] ?? [];
+            if ($pkgLicense->key_hash && $pkgLicense->key_hash !== $newKeyHash) {
+                $prev[] = ['hash' => $pkgLicense->key_hash, 'rotated_at' => now()->toIso8601String()];
+            }
+            $meta['previous_key_hashes'] = $prev;
+
+            $pkgLicense->update([
+                'key_hash'    => $newKeyHash,
+                'status'      => $licenseCompany->status === 'active' ? 'active' : 'suspended',
+                'activated_at' => $licenseCompany->activated_at,
+                'expires_at'  => $licenseCompany->expires_at,
+                'max_usages'  => $licenseCompany->max_installations,
+                'meta'        => array_merge($existingMeta, $meta),
+            ]);
+        } else {
+            // Create new package License row
+            $pkgLicense = License::create([
+                'key_hash'     => $newKeyHash,
+                'status'       => $licenseCompany->status === 'active' ? 'active' : 'suspended',
+                'activated_at' => $licenseCompany->activated_at,
+                'expires_at'   => $licenseCompany->expires_at,
+                'max_usages'   => $licenseCompany->max_installations,
+                'meta'         => $meta,
+            ]);
+        }
+
+        return $pkgLicense;
+    }
+
+    /**
      * Show confirmation page for regenerating license key.
      */
     public function regenerateConfirm(string $hash): View
@@ -329,9 +401,11 @@ class LicenseCompanyController extends Controller
     {
         $licenseCompany = $this->findOrFail($hash);
 
-        // Generate a new key directly (no dependency on package License record)
-        $newKey     = 'LIC-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4))
-                    . '-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
+        $oldKeyHash = $licenseCompany->license_key_hash;
+
+        // Generate a new key
+        $newKey = 'LIC-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4))
+                . '-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
         $newKeyHash = LicenseCompany::hashKey($newKey);
 
         $licenseCompany->update([
@@ -340,23 +414,23 @@ class LicenseCompanyController extends Controller
             'updated_by'       => auth()->id(),
         ]);
 
-        // Also update package License record if it exists
-        $pkgLicense = License::where('key_hash', $licenseCompany->getOriginal('license_key_hash') ?? '')->first();
-        if ($pkgLicense && $pkgLicense->canRegenerateKey()) {
-            try {
-                $pkgLicense->regenerateKey();
-            } catch (\Throwable) {
-                // Non-fatal — our record is already updated
-            }
+        // Sync to package's `licenses` table — required for the
+        // /api/licensing/v1/activate endpoint to find this key.
+        try {
+            $this->syncToPackageLicense($licenseCompany, $newKey, $oldKeyHash);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to sync regenerated key to package License: ' . $e->getMessage());
         }
 
         LicenseLogsAudit::record('key_regenerated', 'license_company', $licenseCompany->id, [
             'reason' => $request->input('reason', 'Key regenerated by admin'),
         ]);
 
+        // Flash the new key to session so show page can display in a MODAL (not a toast).
         return redirect()
             ->route('license.companies.show', $hash)
-            ->with('success', 'Kunci lisensi baru: ' . $newKey . ' — Catat segera, tidak akan ditampilkan lagi.');
+            ->with('new_license_key', $newKey)
+            ->with('success', 'Kunci lisensi berhasil di-generate ulang.');
     }
 
     private function findOrFail(string $hash): LicenseCompany

@@ -740,7 +740,7 @@
     <div class="g-toast-container" id="gToastContainer"></div>
 
     {{-- ══ FLASH → TOAST (server-side sessions) ══════════════════════════════ --}}
-    @if(session('success'))
+    @if(session('success') && ! session('new_license_key'))
     <script>document.addEventListener('DOMContentLoaded',function(){GToast.success(@json(session('success')));});</script>
     @endif
     @if(session('error'))

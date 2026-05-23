@@ -18,7 +18,7 @@
         <div class="card-header">
             <span class="card-title">License Info</span>
             <div style="display:flex;gap:.5rem;align-items:center;">
-                <button onclick="showLicensePublicKey('{{ $hash }}')"
+                <button onclick="window.__showLicensePublicKey('{{ $hash }}')"
                     class="btn btn-secondary btn-sm" style="display:flex;align-items:center;gap:.3rem;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
                     Public Key
@@ -85,7 +85,8 @@
             <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.85rem;margin-bottom:.75rem;">
                 <div style="font-size:.75rem;font-weight:700;color:#1a3a6b;margin-bottom:.3rem;">Opsi 1 — Tampilkan Kunci Lama</div>
                 <div style="font-size:.72rem;color:#64748b;margin-bottom:.6rem;">Memulihkan kunci asli dari enkripsi. Hanya berhasil jika APP_KEY tidak pernah berubah.</div>
-                <button onclick="retrieveKey('{{ $hash }}')" id="retrieveBtn" class="btn btn-secondary btn-sm">Tampilkan Kunci</button>
+                <button type="button" id="retrieveBtn" class="btn btn-secondary btn-sm"
+                    onclick="window.__retrieveKey && window.__retrieveKey('{{ $hash }}')">Tampilkan Kunci</button>
                 <div id="retrieveResult" style="display:none;margin-top:.6rem;"></div>
             </div>
             {{-- Regenerate --}}
@@ -103,7 +104,115 @@
     </div>
 </div>
 
-{{-- scripts moved to after @endsection --}}
+{{-- ═════════════════════════════════════════════════════════════════════
+     INLINE SCRIPTS — placed inside @section('content') so they render
+     even when @push/@stack mechanism has issues. Functions are scoped
+     to window.__* to avoid collisions.
+═════════════════════════════════════════════════════════════════════ --}}
+<script>
+window.__retrieveKey = function(hash) {
+    var btn = document.getElementById('retrieveBtn');
+    var result = document.getElementById('retrieveResult');
+    if (btn) { btn.disabled = true; btn.textContent = 'Memuat...'; }
+
+    fetch('/licenses/' + hash + '/retrieve-key', {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Tampilkan Kunci'; }
+        if (data.success) {
+            window.__showLicenseKeyModal(data.key, false);
+            if (result) {
+                result.style.display = 'block';
+                result.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.5rem .75rem;font-size:.72rem;color:#166534;">✅ Kunci berhasil dipulihkan — lihat di modal.</div>';
+            }
+        } else {
+            if (window.GToast) GToast.danger(data.message || 'Gagal memulihkan kunci.');
+            else alert(data.message || 'Gagal memulihkan kunci.');
+        }
+    })
+    .catch(function() {
+        if (btn) { btn.disabled = false; btn.textContent = 'Tampilkan Kunci'; }
+        if (window.GToast) GToast.danger('Gagal menghubungi server.');
+        else alert('Gagal menghubungi server.');
+    });
+};
+
+/**
+ * Show the license key in a persistent modal with copy-to-clipboard.
+ * @param {string} key  The license key to display
+ * @param {boolean} isNew Whether this is a freshly-generated key (changes copy)
+ */
+window.__showLicenseKeyModal = function(key, isNew) {
+    if (!window.GModal) {
+        // Fallback if GModal somehow unavailable
+        prompt('Kunci Lisensi (salin sekarang):', key);
+        return;
+    }
+    var title = isNew ? '✓ Kunci Lisensi Baru' : 'Kunci Lisensi';
+    var note  = isNew
+        ? '<strong style="color:#dc2626;">Salin dan simpan kunci ini sekarang. Kunci tidak akan ditampilkan lagi setelah modal ditutup.</strong>'
+        : 'Salin kunci ini dan simpan di tempat aman.';
+    var msg =
+        '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.85rem 1rem;margin:.5rem 0;">'
+      +   '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em;">Kunci Lisensi Aplikasi</div>'
+      +   '<div id="newKeyDisplay" style="display:flex;align-items:center;gap:.5rem;">'
+      +     '<code style="flex:1;font-family:monospace;font-size:1rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;background:#fff;padding:.5rem .65rem;border-radius:6px;border:1.5px dashed #86efac;">'
+      +       key
+      +     '</code>'
+      +     '<button type="button" onclick="window.__copyKeyToClipboard(this, ' + JSON.stringify(key) + ')" '
+      +       'style="background:#16a34a;color:#fff;border:none;padding:.5rem .8rem;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">'
+      +       'Copy'
+      +     '</button>'
+      +   '</div>'
+      + '</div>'
+      + '<p style="font-size:.78rem;color:#64748b;margin-top:.6rem;line-height:1.5;">' + note + '</p>';
+
+    GModal.alert({
+        type: 'success',
+        title: title,
+        message: msg,
+        confirmText: 'Tutup',
+    });
+};
+
+window.__copyKeyToClipboard = function(btn, key) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(key).then(function() {
+            var orig = btn.textContent;
+            btn.textContent = '✓ Tersalin';
+            btn.style.background = '#15803d';
+            setTimeout(function() { btn.textContent = orig; btn.style.background = '#16a34a'; }, 2000);
+        }).catch(function() {
+            window.__fallbackCopy(key);
+        });
+    } else {
+        window.__fallbackCopy(key);
+    }
+};
+
+window.__fallbackCopy = function(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+};
+
+@if(session('new_license_key'))
+{{-- Show the new license key in a modal on page load --}}
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        window.__showLicenseKeyModal(@json(session('new_license_key')), true);
+    }, 250);
+});
+@endif
+</script>
 <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-header"><span class="card-title">Licensed Apps &amp; Features</span></div>
     <div class="card-body" style="padding:0;">
@@ -223,7 +332,7 @@
                                 @if($requiresLic)
                                     @if($feat->feature_license_key_hash)
                                         <div style="display:flex;flex-direction:column;gap:.25rem;">
-                                            <button onclick="retrieveFLKLic({{ $feat->id }}, '{{ Hashids::encode($masterAppId) }}')"
+                                            <button onclick="window.__retrieveFLKLic({{ $feat->id }}, '{{ Hashids::encode($masterAppId) }}', event)"
                                                 class="btn btn-secondary btn-sm" style="font-size:.62rem;padding:.2rem .5rem;">
                                                 Lihat FLK
                                             </button>
@@ -348,75 +457,24 @@
         </div>
     </div>
 </div>
-@endsection
 
-@push('scripts')
+{{-- ═════════════════════════════════════════════════════════════════════
+     Inline scripts (FLK + Public Key) — placed before @endsection so they
+     definitely render. window.__* prefix to avoid collisions.
+═════════════════════════════════════════════════════════════════════ --}}
 <script>
-function confirmRegenerateKey() {
-    GModal.confirm({
-        type: 'danger',
-        title: 'Generate Kunci Baru',
-        message: 'Generate kunci baru? <strong>Kunci lama tidak berlaku lagi</strong> dan ERMv3 harus diaktifkan ulang dengan kunci baru.',
-        confirmText: 'Ya, Generate',
-        cancelText: 'Batal',
-        onConfirm: function() {
-            document.getElementById('regenerateKeyForm').submit();
-        }
-    });
-}
-
-function retrieveKey(hash) {
-    var btn = document.getElementById('retrieveBtn');
-    var result = document.getElementById('retrieveResult');
-    btn.disabled = true;
-    btn.textContent = 'Memuat...';
-
-    fetch('/licenses/' + hash + '/retrieve-key', {
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
-                   'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-    })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.textContent = 'Tampilkan Kunci';
-        result.style.display = 'block';
-        if (data.success) {
-            GModal.alert({
-                type: 'success',
-                title: 'Kunci Lisensi',
-                message: '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0;">'
-                    + '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.35rem;">Kunci Lisensi Aplikasi:</div>'
-                    + '<div style="font-family:monospace;font-size:.95rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
-                    + '</div>'
-                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Salin kunci ini sekarang dan simpan di tempat aman.</p>',
-                confirmText: 'Tutup',
-            });
-            result.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.5rem .75rem;font-size:.72rem;color:#166534;">✅ Kunci berhasil dipulihkan — lihat di modal.</div>';
-        } else {
-            GToast.danger(data.message);
-            result.style.display = 'none';
-        }
-    })
-    .catch(() => {
-        btn.disabled = false;
-        btn.textContent = 'Tampilkan Kunci';
-        GToast.danger('Gagal menghubungi server.');
-    });
-}
-
-function retrieveFLKLic(featureId, appHash) {
-    var btn = event.target;
-    btn.disabled = true; btn.textContent = '...';
+window.__retrieveFLKLic = function(featureId, appHash, evt) {
+    var btn = evt && evt.target ? evt.target : null;
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
     fetch('/master/apps/' + appHash + '/features/' + featureId + '/retrieve-key', {
         credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false; btn.textContent = 'Lihat FLK';
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Lihat FLK'; }
         if (data.success) {
             GModal.alert({
                 type: 'info',
@@ -429,21 +487,25 @@ function retrieveFLKLic(featureId, appHash) {
                 confirmText: 'Tutup',
             });
         } else {
-            GToast.danger(data.message);
+            if (window.GToast) GToast.danger(data.message || 'Gagal.');
+            else alert(data.message || 'Gagal.');
         }
     })
-    .catch(() => { btn.disabled = false; btn.textContent = 'Lihat FLK'; GToast.danger('Gagal menghubungi server.'); });
-}
+    .catch(function() {
+        if (btn) { btn.disabled = false; btn.textContent = 'Lihat FLK'; }
+        if (window.GToast) GToast.danger('Gagal menghubungi server.');
+    });
+};
 
-function showLicensePublicKey(hash) {
+window.__showLicensePublicKey = function(hash) {
     fetch(window.location.origin + '/licenses/' + hash + '/public-key', {
         credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })
-    .then(r => r.json())
-    .then(res => {
-        if (!res.success) { GToast.danger(res.message || 'Gagal.'); return; }
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (!res.success) { if (window.GToast) GToast.danger(res.message || 'Gagal.'); return; }
         var d = res.data;
         if (!d.has_key) {
             GModal.alert({
@@ -455,14 +517,12 @@ function showLicensePublicKey(hash) {
             });
             return;
         }
-
         var snippetHtml = '';
         var appCodes = Object.keys(d.app_snippets || {});
-
         if (appCodes.length > 1) {
             snippetHtml += '<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem;">';
             appCodes.forEach(function(code, i) {
-                snippetHtml += '<button onclick="switchSnippetTabLic(this, \'' + code + '\')" '
+                snippetHtml += '<button onclick="window.__switchSnippetTabLic(this, \'' + code + '\')" '
                     + 'style="padding:.2rem .6rem;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;border:1.5px solid #bfdbfe;'
                     + (i === 0 ? 'background:#1a3a6b;color:#fff;' : 'background:#eff6ff;color:#1e40af;') + '">'
                     + code + '</button>';
@@ -477,7 +537,6 @@ function showLicensePublicKey(hash) {
             snippetHtml = '<div style="background:#0f172a;border-radius:8px;padding:.65rem .85rem;font-family:monospace;font-size:.72rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;">'
                 + d.env_snippet + '</div>';
         }
-
         GModal.alert({
             type: 'info',
             title: 'Public Key — ' + res.company,
@@ -498,15 +557,16 @@ function showLicensePublicKey(hash) {
             confirmText: 'Tutup',
         });
     })
-    .catch(() => GToast.danger('Gagal mengambil public key.'));
-}
+    .catch(function() { if (window.GToast) GToast.danger('Gagal mengambil public key.'); });
+};
 
-function switchSnippetTabLic(btn, code) {
+window.__switchSnippetTabLic = function(btn, code) {
     document.querySelectorAll('[id^="lic-snippet-"]').forEach(function(el) { el.style.display = 'none'; });
     btn.parentElement.querySelectorAll('button').forEach(function(b) { b.style.background = '#eff6ff'; b.style.color = '#1e40af'; });
     var t = document.getElementById('lic-snippet-' + code);
     if (t) t.style.display = 'block';
     btn.style.background = '#1a3a6b'; btn.style.color = '#fff';
-}
+};
 </script>
-@endpush
+@endsection
+
