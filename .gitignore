@@ -25,3 +25,13 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Server/hosting files (managed by hosting provider, not git)
+.serve.err
+.serve.log
+.htaccess
+.well-known/
+404.html
+502.html
+/storage/logs/
+/bootstrap/cache/
