@@ -70,7 +70,7 @@ return [
     'offline_token' => [
         'enabled' => true,
         'service' => PasetoTokenService::class,
-        'issuer' => 'laravel-licensing',
+        'issuer' => env('LICENSING_ISSUER', 'gemilang-inti-teknologi'),
         'ttl_days' => 7,
         'force_online_after_days' => 14,
         'clock_skew_seconds' => 60,
