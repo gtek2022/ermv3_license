@@ -42,7 +42,8 @@ class SyncLicensesToPackage extends Command
             ];
 
             if ($pkg) {
-                $existingMeta = is_array($pkg->meta) ? (array) $pkg->meta : (is_string($pkg->meta) ? (json_decode($pkg->meta, true) ?: []) : []);
+                // Defensive normalization — meta can be null, string, array, or ArrayObject
+                $existingMeta = $this->normalizeMeta($pkg->meta);
                 $pkg->update([
                     'status'       => $lc->status === 'active' ? 'active' : 'suspended',
                     'activated_at' => $lc->activated_at,
@@ -69,5 +70,29 @@ class SyncLicensesToPackage extends Command
         $this->info("Done. Created: {$created}, Updated: {$updated}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Normalize meta column from any of the runtime types it can hold.
+     */
+    protected function normalizeMeta($meta): array
+    {
+        if (is_null($meta)) {
+            return [];
+        }
+        if (is_array($meta)) {
+            return $meta;
+        }
+        if ($meta instanceof \Illuminate\Database\Eloquent\Casts\ArrayObject) {
+            return $meta->toArray();
+        }
+        if (is_object($meta) && method_exists($meta, 'toArray')) {
+            return $meta->toArray();
+        }
+        if (is_string($meta)) {
+            $decoded = json_decode($meta, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
     }
 }

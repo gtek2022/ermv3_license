@@ -356,7 +356,9 @@ class LicenseCompanyController extends Controller
 
         if ($pkgLicense) {
             // Update existing record
-            $existingMeta = is_array($pkgLicense->meta) ? $pkgLicense->meta : (json_decode($pkgLicense->meta ?? '{}', true) ?: []);
+            // Package's License model casts `meta` to ArrayObject — handle all
+            // possible runtime types defensively (string, array, ArrayObject, null).
+            $existingMeta = $this->normalizeMeta($pkgLicense->meta);
             // Track previous hash for audit
             $prev = $existingMeta['previous_key_hashes'] ?? [];
             if ($pkgLicense->key_hash && $pkgLicense->key_hash !== $newKeyHash) {
@@ -385,6 +387,31 @@ class LicenseCompanyController extends Controller
         }
 
         return $pkgLicense;
+    }
+
+    /**
+     * Normalize meta column from any of the runtime types it can hold:
+     * null, string (json), array, or Eloquent ArrayObject.
+     */
+    protected function normalizeMeta($meta): array
+    {
+        if (is_null($meta)) {
+            return [];
+        }
+        if (is_array($meta)) {
+            return $meta;
+        }
+        if ($meta instanceof \Illuminate\Database\Eloquent\Casts\ArrayObject) {
+            return $meta->toArray();
+        }
+        if (is_object($meta) && method_exists($meta, 'toArray')) {
+            return $meta->toArray();
+        }
+        if (is_string($meta)) {
+            $decoded = json_decode($meta, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
     }
 
     /**
