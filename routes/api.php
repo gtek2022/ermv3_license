@@ -37,6 +37,11 @@ Route::prefix('platform/v1')
         Route::get('public-key', [\App\Http\Controllers\Api\PublicKeyController::class, 'show'])
             ->name('platform.public-key');
 
+        // Client runtime config — no auth, fetched periodically by clients to
+        // avoid hardcoding heartbeat interval / grace / timeout in their .env.
+        Route::get('client-config', [\App\Http\Controllers\Api\ClientConfigController::class, 'show'])
+            ->name('platform.client-config');
+
         // Config sync — ERMv3 fetches signed configs, feature flags, enforcement policy
         Route::post('config-sync', [ConfigSyncController::class, 'sync'])
             ->name('platform.config-sync');
