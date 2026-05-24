@@ -178,8 +178,13 @@
                                             @foreach($licenseApps as $la)
                                             @php
                                                 $alreadyLicensed = $la->features()->where('feature_key', $feat->feature_key)->where('status','active')->exists();
-                                                $licHash = Hashids::encode($la->licenseCompany->id);
+                                                $licCompanyId = $la->licenseCompany?->id;
+                                                $licHash = $licCompanyId ? Hashids::encode($licCompanyId) : null;
                                             @endphp
+                                            @if(! $licHash)
+                                                {{-- Orphan license_app — no company; skip --}}
+                                                @continue
+                                            @endif
                                             @if($alreadyLicensed)
                                                 <span style="display:inline-flex;align-items:center;gap:.2rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:.12rem .4rem;font-size:.62rem;color:#166534;">
                                                     ✓ {{ $la->licenseCompany?->company?->name ?? 'Lic #'.$la->id }}

@@ -55,10 +55,13 @@ class AppController extends Controller
         $features = $app->features()->orderBy('category')->orderBy('name')->get();
 
         // Load all active license_apps for this app_code so we can offer
-        // "License this feature to..." directly from the master app page
+        // "License this feature to..." directly from the master app page.
+        // Filter out orphans whose LicenseCompany was soft-deleted so the
+        // view can safely access $la->licenseCompany->id.
         $licenseApps = \App\Models\LicenseApp::with('licenseCompany.company')
             ->where('app_code', $app->code)
             ->where('status', 'active')
+            ->whereHas('licenseCompany') // exclude orphans
             ->get();
 
         return view('master.apps.show', compact('app', 'features', 'licenseApps'));
