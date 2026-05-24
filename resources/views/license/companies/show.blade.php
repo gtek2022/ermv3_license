@@ -148,7 +148,6 @@ window.__retrieveKey = function(hash) {
  */
 window.__showLicenseKeyModal = function(key, isNew) {
     if (!window.GModal) {
-        // Fallback if GModal somehow unavailable
         prompt('Kunci Lisensi (salin sekarang):', key);
         return;
     }
@@ -156,14 +155,20 @@ window.__showLicenseKeyModal = function(key, isNew) {
     var note  = isNew
         ? '<strong style="color:#dc2626;">Salin dan simpan kunci ini sekarang. Kunci tidak akan ditampilkan lagi setelah modal ditutup.</strong>'
         : 'Salin kunci ini dan simpan di tempat aman.';
+
+    // Stash the key on window so the click handler can read it without
+    // having to escape it through HTML attributes (which previously broke
+    // the onclick handler when the key contained quotes).
+    window.__pendingCopyKey = key;
+
     var msg =
         '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.85rem 1rem;margin:.5rem 0;">'
       +   '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em;">Kunci Lisensi Aplikasi</div>'
-      +   '<div id="newKeyDisplay" style="display:flex;align-items:center;gap:.5rem;">'
-      +     '<code style="flex:1;font-family:monospace;font-size:1rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;background:#fff;padding:.5rem .65rem;border-radius:6px;border:1.5px dashed #86efac;">'
-      +       key
+      +   '<div style="display:flex;align-items:center;gap:.5rem;">'
+      +     '<code id="__licKeyText" style="flex:1;font-family:monospace;font-size:1rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;background:#fff;padding:.5rem .65rem;border-radius:6px;border:1.5px dashed #86efac;cursor:text;user-select:all;">'
+      +       __escapeHtml(key)
       +     '</code>'
-      +     '<button type="button" onclick="window.__copyKeyToClipboard(this, ' + JSON.stringify(key) + ')" '
+      +     '<button type="button" id="__licCopyBtn" '
       +       'style="background:#16a34a;color:#fff;border:none;padding:.5rem .8rem;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">'
       +       'Copy'
       +     '</button>'
@@ -177,28 +182,51 @@ window.__showLicenseKeyModal = function(key, isNew) {
         message: msg,
         confirmText: 'Tutup',
     });
+
+    // Wire up the Copy button after modal renders
+    setTimeout(function() {
+        var btn = document.getElementById('__licCopyBtn');
+        if (btn) {
+            btn.addEventListener('click', function() {
+                window.__copyKeyToClipboard(btn, window.__pendingCopyKey || '');
+            });
+        }
+    }, 30);
 };
 
+function __escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(ch) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch];
+    });
+}
+
 window.__copyKeyToClipboard = function(btn, key) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(key).then(function() {
-            var orig = btn.textContent;
-            btn.textContent = '✓ Tersalin';
-            btn.style.background = '#15803d';
-            setTimeout(function() { btn.textContent = orig; btn.style.background = '#16a34a'; }, 2000);
-        }).catch(function() {
-            window.__fallbackCopy(key);
+    if (!key) return;
+    var done = function() {
+        var orig = btn.textContent;
+        btn.textContent = '✓ Tersalin';
+        btn.style.background = '#15803d';
+        setTimeout(function() { btn.textContent = 'Copy'; btn.style.background = '#16a34a'; }, 2000);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+        navigator.clipboard.writeText(key).then(done).catch(function() {
+            window.__fallbackCopy(key); done();
         });
     } else {
-        window.__fallbackCopy(key);
+        window.__fallbackCopy(key); done();
     }
 };
 
 window.__fallbackCopy = function(text) {
     var ta = document.createElement('textarea');
     ta.value = text;
-    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.opacity = '0';
     document.body.appendChild(ta);
+    ta.focus();
     ta.select();
     try { document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(ta);
