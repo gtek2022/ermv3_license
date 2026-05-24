@@ -436,24 +436,20 @@ class LicenseCompanyController extends Controller
 
         $oldKeyHash = $licenseCompany->license_key_hash;
 
-        // ── Step 1: Revoke ALL usages tied to the old key ─────────────────
-        // Old client tokens become invalid the moment the key changes, so
-        // we must also free the slots so the client can re-activate without
-        // hitting "fingerprint already in use" / "limit reached".
+        // ── Step 1: Hard-delete usages tied to the old key ────────────────
+        // We DELETE rather than status='revoked' because (license_id,
+        // usage_fingerprint) is a UNIQUE INDEX in the package's table, so
+        // soft-revoke leaves the slot occupied and the same device cannot
+        // re-activate. Hard delete frees the slot completely.
         $revokedCount = 0;
         $oldPkgLicense = License::where('key_hash', $oldKeyHash)->first();
         if ($oldPkgLicense) {
-            foreach ($oldPkgLicense->usages()->where('status', 'active')->get() as $usage) {
-                $usage->status = 'revoked';
-                $usage->revoked_at = now();
-                $usage->save();
-                $revokedCount++;
-            }
+            $revokedCount = $oldPkgLicense->usages()->delete();
         }
 
-        // Mark our LicenseInstallation rows as revoked too
+        // Mark our LicenseInstallation rows as revoked (audit trail kept)
         foreach ($licenseCompany->activeInstallations as $installation) {
-            $installation->update(['status' => 'revoked', 'revoked_at' => now()]);
+            $installation->update(['status' => 'revoked', 'revoked_at' => now(), 'revoke_reason' => 'key_regenerated']);
         }
 
         // ── Step 2: Generate a new key ────────────────────────────────────
@@ -523,21 +519,16 @@ class LicenseCompanyController extends Controller
     {
         $license = $this->findOrFail($hash);
 
-        // Auto-revoke any active package License usages so they don't linger
+        // Hard-delete package usages (frees unique-index slot for re-use)
         $pkgLicense = License::where('key_hash', $license->license_key_hash)->first();
         $revokedCount = 0;
         if ($pkgLicense) {
-            foreach ($pkgLicense->usages()->where('status', 'active')->get() as $usage) {
-                $usage->status = 'revoked';
-                $usage->revoked_at = now();
-                $usage->save();
-                $revokedCount++;
-            }
+            $revokedCount = $pkgLicense->usages()->delete();
         }
 
-        // Mark all installations as revoked
+        // Mark our installations as revoked (kept for audit)
         foreach ($license->activeInstallations as $installation) {
-            $installation->update(['status' => 'revoked', 'revoked_at' => now()]);
+            $installation->update(['status' => 'revoked', 'revoked_at' => now(), 'revoke_reason' => 'license_deleted']);
         }
 
         LicenseLogsAudit::record('deleted', 'license_company', $license->id, [
@@ -572,17 +563,12 @@ class LicenseCompanyController extends Controller
             return back()->withErrors(['error' => 'Package License record not found. Run: php artisan licenses:sync-package']);
         }
 
-        $count = 0;
-        foreach ($pkgLicense->usages()->where('status', 'active')->get() as $usage) {
-            $usage->status = 'revoked';
-            $usage->revoked_at = now();
-            $usage->save();
-            $count++;
-        }
+        // Hard-delete to free unique-index slots for re-activation
+        $count = $pkgLicense->usages()->delete();
 
-        // Also mark our LicenseInstallation rows
+        // Mark our LicenseInstallation rows (kept for audit)
         foreach ($licenseCompany->activeInstallations as $installation) {
-            $installation->update(['status' => 'revoked', 'revoked_at' => now()]);
+            $installation->update(['status' => 'revoked', 'revoked_at' => now(), 'revoke_reason' => 'admin_revoked_all']);
         }
 
         LicenseLogsAudit::record('usages_revoked', 'license_company', $licenseCompany->id, [
@@ -609,9 +595,14 @@ class LicenseCompanyController extends Controller
             return back()->withErrors(['error' => 'Usage tidak ditemukan untuk lisensi ini.']);
         }
 
-        $usage->status = 'revoked';
-        $usage->revoked_at = now();
-        $usage->save();
+        $fingerprint = $usage->usage_fingerprint;
+        $usage->delete(); // hard delete to free unique-index slot
+
+        // Also revoke our installation row by fingerprint
+        \App\Models\LicenseInstallation::where('license_company_id', $licenseCompany->id)
+            ->where('fingerprint', $fingerprint)
+            ->where('status', 'active')
+            ->update(['status' => 'revoked', 'revoked_at' => now(), 'revoke_reason' => 'admin_revoked']);
 
         LicenseLogsAudit::record('usage_revoked', 'license_company', $licenseCompany->id, [
             'previous' => ['usage_id' => $usageId, 'fingerprint' => substr($usage->usage_fingerprint, 0, 16) . '...'],
