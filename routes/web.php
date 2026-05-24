@@ -82,6 +82,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{hash}/regenerate-confirm', [LicenseCompanyController::class, 'regenerateConfirm'])->name('regenerate-confirm');
         Route::post('/{hash}/regenerate-key', [LicenseCompanyController::class, 'regenerateKey'])->name('regenerate-key');
         Route::get('/{hash}/public-key', [LicenseCompanyController::class, 'publicKey'])->name('public-key');
+        Route::get('/{hash}/delete-confirm', [LicenseCompanyController::class, 'deleteConfirm'])->name('delete-confirm');
+        Route::post('/{hash}/revoke-all-usages', [LicenseCompanyController::class, 'revokeAllUsages'])->name('revoke-all-usages');
+        Route::post('/{hash}/usages/{usageId}/revoke', [LicenseCompanyController::class, 'revokeUsage'])->name('usage.revoke');
         Route::delete('/{hash}', [LicenseCompanyController::class, 'destroy'])->name('destroy');
         Route::post('/{hash}/suspend', [LicenseCompanyController::class, 'suspend'])->name('suspend');
         Route::post('/{hash}/reinstate', [LicenseCompanyController::class, 'reinstate'])->name('reinstate');

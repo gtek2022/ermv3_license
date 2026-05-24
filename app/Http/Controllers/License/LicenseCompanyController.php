@@ -105,7 +105,13 @@ class LicenseCompanyController extends Controller
         $license->load(['company', 'licenseApps.features', 'activeInstallations']);
         $heartbeatLogs = $license->heartbeatLogs()->orderByDesc('heartbeat_at')->limit(20)->get();
 
-        return view('license.companies.show', compact('license', 'heartbeatLogs'));
+        // Load active package License usages so we can show + revoke them
+        $pkgLicense = License::where('key_hash', $license->license_key_hash)->first();
+        $activeUsages = $pkgLicense
+            ? $pkgLicense->usages()->where('status', 'active')->orderByDesc('last_seen_at')->get()
+            : collect();
+
+        return view('license.companies.show', compact('license', 'heartbeatLogs', 'activeUsages'));
     }
 
     public function suspend(string $hash): RedirectResponse
@@ -441,17 +447,45 @@ class LicenseCompanyController extends Controller
     }
 
     /**
+     * Show confirmation page for deleting a license.
+     */
+    public function deleteConfirm(string $hash): View
+    {
+        $licenseCompany = $this->findOrFail($hash);
+        $licenseCompany->load(['company', 'activeInstallations', 'licenseApps']);
+
+        // Also load package License usages so admin sees the impact
+        $pkgLicense = License::where('key_hash', $licenseCompany->license_key_hash)->first();
+        $activeUsages = $pkgLicense
+            ? $pkgLicense->usages()->where('status', 'active')->get()
+            : collect();
+
+        return view('license.companies.delete-confirm', compact('licenseCompany', 'hash', 'activeUsages'));
+    }
+
+    /**
      * Soft delete a license.
-     * Only allowed if license has no active installations.
+     * Auto-revokes all active package usages first to free seats.
      */
     public function destroy(string $hash): RedirectResponse
     {
         $license = $this->findOrFail($hash);
 
-        if ($license->activeInstallations()->count() > 0) {
-            return back()->withErrors([
-                'error' => 'Tidak bisa menghapus lisensi yang masih memiliki instalasi aktif. Revoke semua instalasi terlebih dahulu.',
-            ]);
+        // Auto-revoke any active package License usages so they don't linger
+        $pkgLicense = License::where('key_hash', $license->license_key_hash)->first();
+        $revokedCount = 0;
+        if ($pkgLicense) {
+            foreach ($pkgLicense->usages()->where('status', 'active')->get() as $usage) {
+                $usage->status = 'revoked';
+                $usage->revoked_at = now();
+                $usage->save();
+                $revokedCount++;
+            }
+        }
+
+        // Mark all installations as revoked
+        foreach ($license->activeInstallations as $installation) {
+            $installation->update(['status' => 'revoked', 'revoked_at' => now()]);
         }
 
         LicenseLogsAudit::record('deleted', 'license_company', $license->id, [
@@ -460,12 +494,77 @@ class LicenseCompanyController extends Controller
                 'label'      => $license->label,
                 'status'     => $license->status,
                 'expires_at' => $license->expires_at?->toDateString(),
+                'revoked_usages' => $revokedCount,
             ],
         ]);
 
         $license->delete(); // soft delete
 
-        return redirect()->route('license.companies.index')
-            ->with('success', 'Lisensi berhasil dihapus.');
+        $msg = 'Lisensi berhasil dihapus.';
+        if ($revokedCount > 0) {
+            $msg .= " {$revokedCount} usage aktif ikut di-revoke.";
+        }
+
+        return redirect()->route('license.companies.index')->with('success', $msg);
+    }
+
+    /**
+     * Revoke all active usages for a license — frees up all installation slots.
+     */
+    public function revokeAllUsages(string $hash): RedirectResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        $pkgLicense = License::where('key_hash', $licenseCompany->license_key_hash)->first();
+        if (! $pkgLicense) {
+            return back()->withErrors(['error' => 'Package License record not found. Run: php artisan licenses:sync-package']);
+        }
+
+        $count = 0;
+        foreach ($pkgLicense->usages()->where('status', 'active')->get() as $usage) {
+            $usage->status = 'revoked';
+            $usage->revoked_at = now();
+            $usage->save();
+            $count++;
+        }
+
+        // Also mark our LicenseInstallation rows
+        foreach ($licenseCompany->activeInstallations as $installation) {
+            $installation->update(['status' => 'revoked', 'revoked_at' => now()]);
+        }
+
+        LicenseLogsAudit::record('usages_revoked', 'license_company', $licenseCompany->id, [
+            'previous' => ['count' => $count],
+        ]);
+
+        return back()->with('success', "Berhasil revoke {$count} usage. Slot lisensi sekarang kosong dan client bisa aktivasi ulang.");
+    }
+
+    /**
+     * Revoke a single usage by id.
+     */
+    public function revokeUsage(string $hash, int $usageId): RedirectResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        $pkgLicense = License::where('key_hash', $licenseCompany->license_key_hash)->first();
+        if (! $pkgLicense) {
+            return back()->withErrors(['error' => 'Package License record not found.']);
+        }
+
+        $usage = $pkgLicense->usages()->where('id', $usageId)->first();
+        if (! $usage) {
+            return back()->withErrors(['error' => 'Usage tidak ditemukan untuk lisensi ini.']);
+        }
+
+        $usage->status = 'revoked';
+        $usage->revoked_at = now();
+        $usage->save();
+
+        LicenseLogsAudit::record('usage_revoked', 'license_company', $licenseCompany->id, [
+            'previous' => ['usage_id' => $usageId, 'fingerprint' => substr($usage->usage_fingerprint, 0, 16) . '...'],
+        ]);
+
+        return back()->with('success', 'Usage berhasil di-revoke.');
     }
 }

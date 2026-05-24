@@ -423,6 +423,68 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+{{-- Active license usages — manage installation slots --}}
+<div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-header">
+        <span class="card-title">Active Installation Slots ({{ $activeUsages->count() }} / {{ $license->max_installations }})</span>
+        @if($activeUsages->count() > 0)
+        <form method="POST" action="{{ route('license.companies.revoke-all-usages', $hash) }}"
+              onsubmit="return confirm('Revoke SEMUA {{ $activeUsages->count() }} usage aktif? Semua client ERMv3 akan kehilangan akses dan harus aktivasi ulang.');"
+              style="margin:0;">
+            @csrf
+            <button type="submit" class="btn btn-warning btn-sm">
+                Revoke Semua Usage
+            </button>
+        </form>
+        @endif
+    </div>
+    <div class="card-body" style="padding:0;">
+        @if($activeUsages->count() === 0)
+        <div style="text-align:center;color:#94a3b8;padding:2rem;font-size:.82rem;">
+            Belum ada usage aktif. Slot kosong — client bisa aktivasi.
+        </div>
+        @else
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fingerprint</th>
+                        <th>Registered</th>
+                        <th>Last Seen</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($activeUsages as $u)
+                    <tr>
+                        <td style="font-family:monospace;font-size:.72rem;">
+                            <span style="color:#1a3a6b;font-weight:600;">{{ substr($u->usage_fingerprint, 0, 24) }}</span>…
+                        </td>
+                        <td style="font-size:.78rem;color:#64748b;">
+                            {{ $u->registered_at?->format('d M Y H:i') ?? '—' }}
+                        </td>
+                        <td style="font-size:.78rem;color:#64748b;">
+                            {{ $u->last_seen_at?->diffForHumans() ?? '—' }}
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ route('license.companies.usage.revoke', [$hash, $u->id]) }}"
+                                  onsubmit="return confirm('Revoke usage ini? Client dengan fingerprint {{ substr($u->usage_fingerprint, 0, 16) }}… akan kehilangan akses dan harus aktivasi ulang.');"
+                                  style="margin:0;">
+                                @csrf
+                                <button type="submit" class="btn btn-warning btn-sm" style="font-size:.7rem;">
+                                    Revoke
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
+    </div>
+</div>
+
 {{-- Recent heartbeats --}}
 <div class="card">
     <div class="card-header">
