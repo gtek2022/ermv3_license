@@ -120,4 +120,8 @@ Route::middleware(['auth'])->group(function () {
     // ── System: Public Key Info ───────────────────────────────────────────────
     Route::get('/system/public-key', [\App\Http\Controllers\Api\PublicKeyController::class, 'show'])
         ->name('system.public-key');
+
+    // ── Guide / Documentation ──────────────────────────────────────────────────
+    Route::get('/guide/lisensi', [\App\Http\Controllers\GuideController::class, 'show'])
+        ->name('guide.lisensi');
 });

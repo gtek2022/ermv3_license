@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panduan Lisensi ERM — Gemilang Inti Teknologi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1a3a6b;
+    --primary-mid: #29abe2;
+    --bg: #f1f5f9;
+    --card: #fff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── Layout ── */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 280px;
+    background: var(--primary);
+    color: #fff;
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 0 1.5rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,.15);
+    margin-bottom: 1rem;
+  }
+  .sidebar-title { font-size: 1.05rem; font-weight: 800; }
+  .sidebar-sub  { font-size: .72rem; color: rgba(255,255,255,.6); margin-top: .15rem; }
+  .sidebar nav a {
+    display: block;
+    padding: .55rem 1.5rem;
+    color: rgba(255,255,255,.78);
+    text-decoration: none;
+    font-size: .82rem;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+  }
+  .sidebar nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .sidebar nav a.active {
+    background: rgba(41,171,226,.18);
+    color: #fff;
+    border-left-color: var(--primary-mid);
+    font-weight: 600;
+  }
+  .sidebar nav a.section-title {
+    padding: 1rem 1.5rem .35rem;
+    font-size: .65rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.4);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    cursor: default;
+  }
+  .sidebar nav a.section-title:hover { background: transparent; }
+  .sidebar nav a.indent { padding-left: 2.5rem; font-size: .76rem; }
+
+  .content {
+    flex: 1;
+    padding: 2.5rem 3rem 4rem;
+    max-width: 1100px;
+  }
+
+  /* ── Typography ── */
+  h1 {
+    font-size: 1.85rem;
+    color: var(--primary);
+    margin-bottom: .35rem;
+    letter-spacing: -.01em;
+  }
+  h1 + .lead {
+    color: var(--muted);
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border);
+  }
+  h2 {
+    font-size: 1.4rem;
+    color: var(--primary);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 1.5px solid var(--border);
+  }
+  h2:first-of-type { margin-top: 1rem; }
+  h3 {
+    font-size: 1.1rem;
+    color: var(--text);
+    margin: 1.75rem 0 .75rem;
+  }
+  h4 {
+    font-size: .95rem;
+    color: var(--text);
+    margin: 1.25rem 0 .5rem;
+    font-weight: 700;
+  }
+  p { margin-bottom: 1rem; }
+  ul, ol { margin: 0 0 1rem 1.5rem; }
+  li { margin-bottom: .35rem; }
+  strong { color: var(--primary); font-weight: 700; }
+
+  /* ── Code ── */
+  code {
+    background: #f1f5f9;
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    font-size: .85em;
+    color: var(--primary);
+    font-family: 'SF Mono', Consolas, Monaco, monospace;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: .8rem;
+    line-height: 1.55;
+  }
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  /* ── Callouts ── */
+  .callout {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin: 1.25rem 0;
+    border-left: 4px solid;
+    font-size: .9rem;
+  }
+  .callout-info    { background: #eff6ff; border-color: var(--primary-mid); }
+  .callout-success { background: #f0fdf4; border-color: var(--success); }
+  .callout-warning { background: #fffbeb; border-color: var(--warning); }
+  .callout-danger  { background: #fef2f2; border-color: var(--danger); }
+  .callout-title { font-weight: 700; margin-bottom: .35rem; display: flex; align-items: center; gap: .4rem; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: var(--card);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  th {
+    background: var(--primary);
+    color: #fff;
+    padding: .75rem 1rem;
+    text-align: left;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  td {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: .88rem;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0;
+  }
+  .card-title { font-weight: 700; color: var(--primary); margin-bottom: .5rem; font-size: 1rem; }
+
+  /* ── Steps ── */
+  .steps { counter-reset: step; padding: 0; list-style: none; margin-left: 0; }
+  .steps > li {
+    counter-increment: step;
+    position: relative;
+    padding: 1rem 1rem 1rem 3.5rem;
+    margin-bottom: .75rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    list-style: none;
+  }
+  .steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Diagrams ── */
+  .diagram {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 1.25rem;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: .78rem;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  /* ── Tabs (FAQ) ── */
+  details {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    margin-bottom: .55rem;
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--primary);
+    padding: .25rem 0;
+    list-style: none;
+    position: relative;
+    padding-left: 1.5rem;
+  }
+  details summary::before {
+    content: '▶';
+    position: absolute;
+    left: 0;
+    transition: transform .15s;
+    font-size: .7rem;
+    color: var(--muted);
+    top: .55rem;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  details > *:not(summary) { margin-top: .75rem; }
+
+  .badge {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 12px;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .badge-admin   { background: #dbeafe; color: #1e40af; }
+  .badge-dev     { background: #fef3c7; color: #92400e; }
+  .badge-shared  { background: #f1f5f9; color: #475569; }
+
+  /* ── Print ── */
+  @media print {
+    .sidebar { display: none; }
+    .content { padding: 1rem; max-width: 100%; }
+    body { background: #fff; }
+    .card, table, pre, .diagram, details { break-inside: avoid; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; }
+    .content { padding: 1.5rem; }
+  }
+
+  /* ── Header role tags ── */
+  h2 .role, h3 .role {
+    font-size: .65rem;
+    margin-left: .5rem;
+    vertical-align: middle;
+  }
+
+  hr {
+    border: none;
+    border-top: 2px solid var(--border);
+    margin: 2.5rem 0;
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Panduan Lisensi ERM</div>
+      <div class="sidebar-sub">Gemilang Inti Teknologi</div>
+    </div>
+    <nav>
+      <a class="section-title">Mulai Cepat</a>
+      <a href="#overview">Overview Sistem</a>
+      <a href="#arsitektur">Arsitektur &amp; Diagram</a>
+      <a href="#alur-lisensi">Alur Lisensi</a>
+
+      <a class="section-title">Untuk Admin</a>
+      <a href="#admin-login">Login Gemilang</a>
+      <a href="#admin-company">Tambah Company Client</a>
+      <a href="#admin-app">Daftarkan Aplikasi</a>
+      <a href="#admin-feature">Setup Feature</a>
+      <a href="#admin-license">Terbitkan Lisensi</a>
+      <a href="#admin-feature-license">Lisensi Per-Fitur (FLK)</a>
+      <a href="#admin-monitor">Monitor Instalasi</a>
+      <a href="#admin-revoke">Revoke / Suspend / Renew</a>
+      <a href="#admin-regenerate">Regenerate Kunci</a>
+      <a href="#admin-config">Tuning Heartbeat</a>
+
+      <a class="section-title">Untuk Client / User Aplikasi</a>
+      <a href="#client-aktivasi">Aktivasi ERM Pertama Kali</a>
+      <a href="#client-aktivasi-fitur">Aktivasi Fitur Tambahan</a>
+      <a href="#client-status">Cek Status Lisensi</a>
+      <a href="#client-troubleshoot">Troubleshoot</a>
+
+      <a class="section-title">Untuk Developer</a>
+      <a href="#dev-arsitektur">Arsitektur Detail</a>
+      <a href="#dev-deployment">Deployment</a>
+      <a href="#dev-env">Konfigurasi .env</a>
+      <a href="#dev-storage">Layout Storage</a>
+      <a href="#dev-api">API Endpoints</a>
+      <a href="#dev-integrasi">Integrasi di Code</a>
+      <a href="#dev-fingerprint">Fingerprint Generator</a>
+      <a href="#dev-heartbeat">Heartbeat Setup</a>
+      <a href="#dev-debug">Debugging</a>
+
+      <a class="section-title">Referensi</a>
+      <a href="#faq">FAQ</a>
+      <a href="#glossary">Glosarium</a>
+      <a href="#error-codes">Error Codes</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+
+    <h1>Panduan Lisensi Platform ERM</h1>
+    <p class="lead">Sistem lisensi terpusat untuk produk Gemilang Inti Teknologi — komprehensif untuk admin, user aplikasi, dan developer.</p>
+
+    <!-- ============================================================ -->
+    <h2 id="overview">Overview Sistem</h2>
+
+    <p>Platform ERM dilindungi oleh sistem lisensi yang terdiri dari dua aplikasi yang berkomunikasi via HTTPS:</p>
+
+    <table>
+      <thead>
+        <tr><th>Aplikasi</th><th>Peran</th><th>Stack</th><th>Database</th><th>URL Production</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Gemilang</strong></td>
+          <td>License Server (penerbit lisensi)</td>
+          <td>Laravel 13 + PostgreSQL</td>
+          <td><code>license</code></td>
+          <td><code>license.gemilangteknologi.com</code></td>
+        </tr>
+        <tr>
+          <td><strong>ERMv3</strong></td>
+          <td>Aplikasi ERM (client lisensi)</td>
+          <td>Laravel 13 + PostgreSQL</td>
+          <td><code>ermv3</code></td>
+          <td><code>erm.gemilangteknologi.com</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Konsep Inti</h3>
+    <ul>
+      <li><strong>License Key</strong> — kode unik berformat <code>LIC-XXXX-XXXX-XXXX-XXXX</code> yang diterbitkan Gemilang dan diberikan ke client untuk mengaktifkan ERMv3.</li>
+      <li><strong>Fingerprint</strong> — sidik device yang dihitung dari <em>hostname + machine UUID + APP_KEY + database identity</em>. Setiap fingerprint unik per server. Lisensi terikat ke fingerprint, jadi tidak bisa dipakai di server lain tanpa aktivasi ulang.</li>
+      <li><strong>PASETO Token</strong> — token kriptografis (Ed25519 signed) yang diterbitkan server ke client setiap aktivasi/refresh. Tidak bisa dipalsukan tanpa private key server.</li>
+      <li><strong>Heartbeat</strong> — ping berkala dari ERMv3 ke Gemilang untuk verifikasi lisensi masih aktif. Kalau gagal terus-menerus, ERMv3 akan kunci diri sendiri.</li>
+      <li><strong>Feature License Key (FLK)</strong> — kunci tambahan opsional untuk fitur premium di dalam ERMv3. Format: <code>FLK-XXXX-XXXX-XXXX-XXXX</code>.</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <h2 id="arsitektur">Arsitektur &amp; Diagram</h2>
+
+    <h3>Topologi High-Level</h3>
+    <div class="diagram">┌─────────────────────────────┐                                ┌──────────────────────────┐
+│  ERMv3 (Aplikasi Client)    │  ──── HTTPS PASETO ─────────►  │  Gemilang (License Srv)  │
+│  Laravel 13                 │                                │  Laravel 13              │
+│  PostgreSQL "ermv3"         │  ◄──── Token + Bundle ───────  │  PostgreSQL "license"    │
+│                             │                                │                          │
+│  • EnforceLicense MW        │   activate / heartbeat /       │  • LicenseCompany        │
+│  • LicenseStateStore        │   refresh / validate /         │  • LicenseApp            │
+│  • HeartbeatService         │   client-config / public-key   │  • LicenseUsage          │
+│  • FeatureGuard             │                                │  • LicenseInstallation   │
+└─────────────────────────────┘                                │  • Ed25519 Signing Keys  │
+                                                               └──────────────────────────┘</div>
+
+    <h3>Hierarki Data di Gemilang</h3>
+    <div class="diagram">MasterCompany (PT. ABM Investama, dll)
+   │
+   └─► LicenseCompany (1:N — satu company bisa punya banyak license bundle)
+         │  • license_key (LIC-XXXX-XXXX-XXXX-XXXX)
+         │  • status: active / suspended / cancelled / expired
+         │  • expires_at, max_installations
+         │
+         ├─► LicenseApp (1:N — apps yang dilisensikan dalam bundle ini)
+         │     │  • app_code: ermv3, foo, bar
+         │     │  • valid_until, max_installations
+         │     │
+         │     └─► LicenseAppFeature (1:N — fitur licensed per app)
+         │           • feature_key: dashboard, export-pdf
+         │           • status: active / suspended
+         │
+         ├─► LicenseInstallation (1:N — track install per device)
+         │     • installation_uuid, fingerprint, hostname, MAC, domain, IP
+         │     • status: active / revoked / blacklisted
+         │
+         └─► LicenseUsage (package internal — link ke LicenseInstallation)
+               • usage_fingerprint, registered_at, last_seen_at
+               • client_type, name, ip, user_agent, meta (JSON)</div>
+
+    <h3>Cryptography</h3>
+    <ul>
+      <li><strong>Algoritma</strong>: PASETO v4 public mode + Ed25519 detached signature</li>
+      <li><strong>Root Key</strong>: 1 key — bertugas mensign signing key (chain of trust)</li>
+      <li><strong>Signing Key</strong>: 1 active key (rotasi 30 hari) — bertugas mensign token aktivasi</li>
+      <li><strong>Public Key</strong>: ada di <code>storage/app/licensing/keys</code> di Gemilang. Dibagikan ke client via API <code>/api/platform/v1/public-key</code>.</li>
+      <li><strong>Tidak ada secret di .env</strong> client — license_key + public_key disimpan encrypted di <code>storage/app/licensing/state/</code> ermv3.</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <h2 id="alur-lisensi">Alur Lisensi (Logic Diagram)</h2>
+
+    <h3>Alur Aktivasi (Pertama Kali)</h3>
+    <div class="diagram">User             ERMv3                        Gemilang
+ │                │                            │
+ │  buka URL      │                            │
+ ├───────────────►│                            │
+ │                │                            │
+ │                │ EnforceLicense MW: cek     │
+ │                │ token storage → kosong     │
+ │                │                            │
+ │                │ Redirect ke /license/install
+ │ ◄──────────────┤                            │
+ │                │                            │
+ │  input kunci   │                            │
+ ├───────────────►│                            │
+ │                │ POST /api/platform/v1/     │
+ │                │      client-config         │
+ │                ├───────────────────────────►│
+ │                │ ◄── { issuer, heartbeat,   │
+ │                │     timeout, dll }         │
+ │                │                            │
+ │                │ GET /api/platform/v1/      │
+ │                │      public-key            │
+ │                ├───────────────────────────►│
+ │                │ ◄── { signing_key,         │
+ │                │     root_key }             │
+ │                │                            │
+ │                │ POST /api/licensing/v1/    │
+ │                │      activate              │
+ │                │ { license_key, fingerprint,│
+ │                │   metadata: { hostname,    │
+ │                │   MAC, machine_id, OS }}   │
+ │                ├───────────────────────────►│
+ │                │                            │ findByKey(license_key)
+ │                │                            │ create LicenseUsage
+ │                │                            │ event UsageRegistered
+ │                │                            │   → buat LicenseInstallation
+ │                │                            │ issue PASETO token
+ │                │ ◄── { token, bundle }      │
+ │                │                            │
+ │                │ Simpan ke storage:         │
+ │                │  .lic_key (encrypted)      │
+ │                │  .public_key (encrypted)   │
+ │                │  {hash}.token              │
+ │                │  public_key_bundle.json    │
+ │                │                            │
+ │                │ Heartbeat pertama          │
+ │                ├───────────────────────────►│
+ │                │ ◄── policy { tolerance,    │
+ │                │           warning_days }   │
+ │                │                            │
+ │ Redirect ke    │                            │
+ │ /license/status (VALID)                     │
+ │ ◄──────────────┤                            │</div>
+
+    <h3>Alur Heartbeat (Berkala)</h3>
+    <div class="diagram">  Setiap N detik (default 3600s = 1 jam)
+        │
+        ▼
+  HeartbeatService::ping()
+        │
+        ▼
+  POST /api/licensing/v1/heartbeat
+   { license_key, fingerprint }
+        │
+   ┌────┴─────────────┐
+   ▼                  ▼
+ SUKSES             GAGAL
+   │                  │
+   ▼                  ▼
+ reset failure     increment failure counter
+ counter = 0       counter +1
+                      │
+                      ▼
+                  Sudah ≥ heartbeat_tolerance (3) gagal?
+                      │
+                ┌─────┴─────┐
+                ▼           ▼
+              Ya           Tidak
+                │           │
+                ▼           ▼
+       Tampil banner    biasa saja
+       warning di          (silent retry)
+       atas aplikasi
+                │
+                ▼
+       Sudah ≥ warning_days (3 hari)?
+                │
+          ┌─────┴─────┐
+          ▼           ▼
+         Ya           Tidak
+          │           │
+          ▼           ▼
+   LOCKOUT MODAL    banner only
+   (full-screen,
+   tidak bisa
+   ditutup, paksa
+   re-aktivasi)</div>
+
+    <h3>Alur Validasi Token (Setiap Request)</h3>
+    <div class="diagram">EnforceLicense Middleware (Global, web + api)
+   │
+   ▼
+ isStaticAsset(path) atau isAllowedPath(path)?
+   │  ya                 │  tidak
+   ▼                     ▼
+ lewat saja        LaravelLicensingClient::isValid()
+                       │
+                       ▼
+                  TokenStorage::retrieve(license_key)
+                       │
+                       ▼
+                  Token ada di file?
+                       │
+                  ┌────┴────┐
+                  ▼         ▼
+                 Ya        Tidak
+                  │         │
+                  ▼         ▼
+            TokenValidator   Redirect ke install
+            ::validate()
+                  │
+        ┌─────────┼─────────┐
+        ▼         ▼         ▼
+       OK     Expired   Fingerprint
+                 atau   mismatch
+              chain fail
+        │         │         │
+        ▼         ▼         ▼
+     Lanjut    Redirect   Redirect
+              activate    activate</div>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-login"><span class="badge badge-admin">ADMIN</span> Login Gemilang</h2>
+
+    <ol class="steps">
+      <li>Buka <code>https://license.gemilangteknologi.com/login</code></li>
+      <li>Masukkan kredensial super admin:
+        <ul>
+          <li>Email: <code>admin@gemilang.local</code></li>
+          <li>Password: <code>gemilang2025</code> (ganti segera setelah login pertama)</li>
+        </ul>
+      </li>
+      <li>Setelah login akan masuk ke Dashboard dengan menu: Home, Master Data (Companies, Apps, Configs, Feature Flags), Licensing (Licenses, Installations), Users.</li>
+    </ol>
+
+    <div class="callout callout-warning">
+      <div class="callout-title">⚠ Best Practice</div>
+      Buat user admin baru sesegera mungkin lewat menu Users → New, lalu nonaktifkan akun super admin default agar tidak mudah di-bruteforce.
+    </div>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-company"><span class="badge badge-admin">ADMIN</span> Tambah Company Client</h2>
+
+    <p>Setiap perusahaan klien yang akan menggunakan ERM diregister sebagai <strong>MasterCompany</strong> dulu sebelum bisa dibuatkan lisensi.</p>
+
+    <ol class="steps">
+      <li>Master Data → <strong>Companies</strong> → klik <strong>+ New Company</strong></li>
+      <li>Isi:
+        <ul>
+          <li><strong>Name</strong> — nama PT/CV (misal "PT. ABM Investama")</li>
+          <li><strong>Code</strong> — kode singkat unik (misal "abm")</li>
+          <li><strong>Email, Phone, Address</strong> — informasi kontak</li>
+          <li><strong>Status</strong> — Active / Inactive</li>
+        </ul>
+      </li>
+      <li>Klik <strong>Save</strong>. Company siap dipilih saat membuat lisensi.</li>
+    </ol>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-app"><span class="badge badge-admin">ADMIN</span> Daftarkan Aplikasi (App)</h2>
+
+    <p>Setiap produk yang akan dilisensikan didaftarkan sebagai <strong>MasterApp</strong>. Default sudah ada <code>ermv3</code>.</p>
+
+    <ol class="steps">
+      <li>Master Data → <strong>Apps</strong> → <strong>+ New App</strong></li>
+      <li>Isi:
+        <ul>
+          <li><strong>Code</strong> — kode unik aplikasi (lowercase, tanpa spasi). Code ini yang dikirim client di header request. Misal: <code>ermv3</code>, <code>finsys</code>.</li>
+          <li><strong>Name</strong> — nama display.</li>
+          <li><strong>Description</strong> — opsional.</li>
+        </ul>
+      </li>
+      <li>Klik <strong>Save</strong>.</li>
+    </ol>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-feature"><span class="badge badge-admin">ADMIN</span> Setup Feature</h2>
+
+    <p>Setiap aplikasi punya daftar fitur. Fitur bisa <strong>Free</strong> (cuma toggle on/off) atau <strong>Licensed</strong> (butuh kunci aktivasi tambahan / FLK).</p>
+
+    <ol class="steps">
+      <li>Master Data → Apps → klik aplikasi (misal <code>ermv3</code>)</li>
+      <li>Scroll ke section <strong>Features</strong> → <strong>+ Tambah Fitur</strong></li>
+      <li>Isi:
+        <ul>
+          <li><strong>Feature Key</strong> — identifier unik (misal <code>dashboard</code>, <code>export-pdf</code>). Dipakai di Blade <code>@feature('dashboard')</code>.</li>
+          <li><strong>Name</strong> — nama display</li>
+          <li><strong>Category</strong> — pengelompokan (Dashboard, Reports, Admin, dll)</li>
+          <li><strong>Requires License</strong> — centang kalau fitur ini premium dan butuh FLK key tersendiri</li>
+        </ul>
+      </li>
+      <li>Klik <strong>Save</strong>.</li>
+    </ol>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 Free vs Licensed Feature</div>
+      <ul style="margin-bottom:0;">
+        <li><strong>Free</strong> — admin bisa toggle on/off di Master / Per-License. Client otomatis dapat akses.</li>
+        <li><strong>Licensed</strong> — generate FLK key dulu, lalu kirim ke client untuk aktivasi via menu Feature License di ERMv3.</li>
+      </ul>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-license"><span class="badge badge-admin">ADMIN</span> Terbitkan Lisensi</h2>
+
+    <ol class="steps">
+      <li>Licensing → <strong>Licenses</strong> → <strong>+ New License</strong></li>
+      <li>Isi form:
+        <ul>
+          <li><strong>Company</strong> — pilih company client (yang sudah didaftarkan)</li>
+          <li><strong>Label</strong> — opsional, untuk identifikasi internal (misal "ABM Production")</li>
+          <li><strong>Days</strong> — durasi berlaku dalam hari (365, 730, dst)</li>
+          <li><strong>Max Installations</strong> — berapa device boleh aktivasi pakai kunci ini (default 1)</li>
+          <li><strong>Apps</strong> — centang aplikasi mana saja yang termasuk lisensi ini</li>
+          <li><strong>Notes</strong> — catatan internal</li>
+        </ul>
+      </li>
+      <li>Klik <strong>Save</strong>. Modal tampil kunci <code>LIC-XXXX-XXXX-XXXX-XXXX</code>.</li>
+      <li><strong>Salin kunci dan kirim aman ke client</strong> (email + WhatsApp). Kunci hanya muncul sekali — kalau lupa, gunakan fitur "Tampilkan Kunci" atau "Generate Kunci Baru".</li>
+    </ol>
+
+    <div class="callout callout-warning">
+      <div class="callout-title">⚠ Max Installations</div>
+      Default 1. Jika client memiliki staging + production, set ke 2. Setiap aktivasi memakan 1 slot. Slot bisa dibebaskan dengan revoke (lihat section Revoke).
+    </div>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-feature-license"><span class="badge badge-admin">ADMIN</span> Lisensi Per-Fitur (FLK)</h2>
+
+    <p>Untuk fitur yang punya <strong>Requires License = true</strong>, perlu generate kunci aktivasi terpisah berformat <code>FLK-XXXX-XXXX-XXXX-XXXX</code>.</p>
+
+    <ol class="steps">
+      <li>Master Data → Apps → klik aplikasi → scroll ke Features</li>
+      <li>Pada baris fitur premium, klik <strong>Generate FLK</strong> → modal tampil kunci FLK</li>
+      <li>Salin FLK dan kirim ke client. Client masuk ke ERMv3 menu <strong>License → Feature Activation</strong> dan masukkan FLK.</li>
+      <li>Setelah aktivasi, fitur otomatis bisa digunakan.</li>
+    </ol>
+
+    <h4>Toggle Aktif/Nonaktif Per License</h4>
+    <ol>
+      <li>Buka detail license di <code>/licenses/{hash}</code></li>
+      <li>Section <strong>Licensed Apps &amp; Features</strong> menampilkan tabel fitur</li>
+      <li>Klik tombol <strong>Suspend</strong> / <strong>Aktifkan</strong> per fitur</li>
+    </ol>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-monitor"><span class="badge badge-admin">ADMIN</span> Monitor Instalasi</h2>
+
+    <p>Halaman detail license menampilkan semua instalasi aktif beserta info lengkap device.</p>
+
+    <h3>Yang Bisa Dilihat per Instalasi</h3>
+    <table>
+      <thead><tr><th>Field</th><th>Penjelasan</th></tr></thead>
+      <tbody>
+        <tr><td>Hostname</td><td>Nama host server client</td></tr>
+        <tr><td>Domain</td><td>Domain dari APP_URL (misal "abm.com")</td></tr>
+        <tr><td>App Version</td><td>Versi Laravel di sisi client</td></tr>
+        <tr><td>OS / OS Release</td><td>Sistem operasi server (Linux 5.4.0-208-generic)</td></tr>
+        <tr><td>PHP Version</td><td>Versi PHP runtime</td></tr>
+        <tr><td>Machine ID</td><td>UUID unik OS (dari /etc/machine-id atau wmic)</td></tr>
+        <tr><td>MAC Address</td><td>Alamat fisik network card</td></tr>
+        <tr><td>Server IP</td><td>IP outbound server</td></tr>
+        <tr><td>Timezone</td><td>Timezone aplikasi client</td></tr>
+        <tr><td>Fingerprint</td><td>Hash 64-char yang menggabungkan semua info di atas</td></tr>
+        <tr><td>User Agent</td><td>Identifikasi versi client (ERMv3/13.x PHP/8.3)</td></tr>
+        <tr><td>Registered At</td><td>Kapan pertama kali aktivasi</td></tr>
+        <tr><td>Last Seen</td><td>Kapan heartbeat terakhir sukses</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Section Recent Heartbeats</h3>
+    <p>Tabel di bawah menampilkan 20 heartbeat terakhir. Status:</p>
+    <ul>
+      <li><strong>verified</strong> — heartbeat sukses</li>
+      <li><strong>failed</strong> — gagal (network, expired, mismatch)</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-revoke"><span class="badge badge-admin">ADMIN</span> Revoke / Suspend / Cancel / Renew</h2>
+
+    <h3>Revoke Single Usage</h3>
+    <p>Hapus satu instalasi (slot kembali kosong, client itu harus aktivasi ulang):</p>
+    <ol class="steps">
+      <li>Buka <code>/licenses/{hash}</code> → section <strong>Installation Slots</strong></li>
+      <li>Klik tombol <strong>Revoke</strong> pada card instalasi yang ingin di-revoke</li>
+      <li>Konfirmasi → row <code>license_usages</code> di-hard-delete (slot bebas)</li>
+    </ol>
+
+    <h3>Revoke Semua Usage</h3>
+    <p>Bersihkan semua slot sekaligus (semua client harus aktivasi ulang):</p>
+    <ol class="steps">
+      <li>Section Installation Slots → <strong>Revoke Semua Usage</strong></li>
+      <li>Konfirmasi</li>
+    </ol>
+
+    <h3>Suspend License</h3>
+    <p>Lisensi tidak dihapus tapi client tidak bisa aktivasi/heartbeat:</p>
+    <ol class="steps">
+      <li>License Info → klik <strong>Suspend</strong></li>
+      <li>Untuk reaktivasi, klik <strong>Reinstate</strong> di tempat yang sama</li>
+    </ol>
+
+    <h3>Cancel License</h3>
+    <p>Permanent — client kehilangan akses, tidak bisa di-reinstate (harus buat baru):</p>
+    <ol class="steps">
+      <li>License Info → klik <strong>Cancel</strong> → konfirmasi</li>
+    </ol>
+
+    <h3>Renew License</h3>
+    <p>Perpanjang masa aktif:</p>
+    <ol class="steps">
+      <li>License Info → input <strong>Days</strong> di kolom Renew (default 365)</li>
+      <li>Klik <strong>Renew</strong> — expires_at + N hari</li>
+    </ol>
+
+    <h3>Hapus Lisensi (Soft Delete)</h3>
+    <ol class="steps">
+      <li>Di list <code>/licenses</code> klik tombol <strong>Hapus</strong></li>
+      <li>Halaman konfirmasi tampil daftar usage aktif yang akan ikut di-revoke</li>
+      <li>Centang konfirmasi + klik <strong>Ya, Hapus Lisensi</strong></li>
+      <li>Lisensi soft-deleted, semua usage hard-delete (data audit tetap di logs)</li>
+    </ol>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-regenerate"><span class="badge badge-admin">ADMIN</span> Regenerate Kunci (Lupa atau Bocor)</h2>
+
+    <h3>Tampilkan Kunci Lama (Recovery)</h3>
+    <ol class="steps">
+      <li>Buka <code>/licenses/{hash}</code> → section <strong>Kunci Lisensi Lupa?</strong></li>
+      <li>Opsi 1 — klik <strong>Tampilkan Kunci</strong> → modal tampil kunci lengkap</li>
+    </ol>
+
+    <h3>Generate Kunci Baru</h3>
+    <p>Kalau kunci dicurigai bocor, generate kunci baru. <strong>Otomatis revoke semua usage aktif</strong> sehingga client harus aktivasi ulang.</p>
+    <ol class="steps">
+      <li>Section Kunci Lisensi Lupa → Opsi 2 → klik <strong>Generate Kunci Baru</strong></li>
+      <li>Halaman konfirmasi → input alasan (opsional)</li>
+      <li>Klik <strong>Ya, Generate Kunci Baru</strong></li>
+      <li>Modal tampil kunci baru — salin dan kirim ke client</li>
+    </ol>
+
+    <div class="callout callout-danger">
+      <div class="callout-title">🚨 Konsekuensi Generate Kunci Baru</div>
+      Semua client yang sedang aktif akan <strong>kehilangan akses langsung</strong>. Pastikan client siap menerima kunci baru sebelum klik tombol ini.
+    </div>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-config"><span class="badge badge-admin">ADMIN</span> Tuning Heartbeat &amp; Policy</h2>
+
+    <p>Default heartbeat policy bisa di-override per-license.</p>
+
+    <ol class="steps">
+      <li>Buka <code>/licenses/{hash}</code> → section <strong>Heartbeat Policy Override</strong></li>
+      <li>Set:
+        <ul>
+          <li><strong>Failure Tolerance</strong> — berapa kali heartbeat gagal sebelum client tampil banner warning (default 3)</li>
+          <li><strong>Warning Days</strong> — setelah berapa hari banner warning, ERMv3 lockout dengan modal full-screen (default 3)</li>
+        </ul>
+      </li>
+      <li>Klik <strong>Save Policy</strong>. Client akan dapat policy baru di heartbeat berikutnya.</li>
+    </ol>
+
+    <h3>Global Defaults (Master Configs)</h3>
+    <p>Master Data → Configs → key:</p>
+    <ul>
+      <li><code>licensing.heartbeat_interval</code> — interval heartbeat (detik, default 3600)</li>
+      <li><code>licensing.heartbeat_retry_limit</code> — default 3</li>
+      <li><code>licensing.warning_days</code> — default 3</li>
+      <li><code>licensing.grace_period_days</code> — default 7</li>
+      <li><code>licensing.timeout</code> — HTTP timeout client → server (default 30s)</li>
+      <li><code>licensing.cache_ttl</code> — cache token client (default 3600s)</li>
+      <li><code>licensing.clock_skew_seconds</code> — toleransi perbedaan waktu (default 60s)</li>
+      <li><code>licensing.issuer</code> — issuer string PASETO (default <code>gemilang-inti-teknologi</code>)</li>
+    </ul>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2 id="client-aktivasi"><span class="badge badge-shared">CLIENT</span> Aktivasi ERM Pertama Kali</h2>
+
+    <ol class="steps">
+      <li>Pastikan ERMv3 sudah ter-install di server (lihat panduan deploy untuk DevOps)</li>
+      <li>Buka URL aplikasi (misal <code>https://erm.client.com</code>) di browser</li>
+      <li>Otomatis redirect ke halaman <strong>Aktivasi Lisensi</strong></li>
+      <li>Server URL Gemilang sudah otomatis terisi dari konfigurasi (tidak perlu diisi)</li>
+      <li>Masukkan kunci lisensi yang diterima dari Gemilang (format <code>LIC-XXXX-XXXX-XXXX-XXXX</code>)</li>
+      <li>Klik <strong>Aktivasi Lisensi</strong></li>
+      <li>Tunggu 2-5 detik. ERMv3 akan:
+        <ul>
+          <li>Fetch public key dari Gemilang</li>
+          <li>Fetch client config (interval heartbeat, dll)</li>
+          <li>Kirim kunci + fingerprint device ke server untuk verifikasi</li>
+          <li>Terima PASETO token + bundle</li>
+          <li>Simpan semua di <code>storage/app/licensing/state/</code> (encrypted)</li>
+          <li>Trigger heartbeat pertama</li>
+          <li>Redirect ke halaman License Status</li>
+        </ul>
+      </li>
+      <li>Status menjadi <strong>VALID</strong>. Klik <strong>← Back</strong> untuk akses aplikasi normal.</li>
+    </ol>
+
+    <!-- ============================================================ -->
+    <h2 id="client-aktivasi-fitur"><span class="badge badge-shared">CLIENT</span> Aktivasi Fitur Tambahan (FLK)</h2>
+
+    <p>Untuk fitur premium yang dijual terpisah:</p>
+
+    <ol class="steps">
+      <li>Login ke ERMv3 sebagai admin</li>
+      <li>Menu <strong>License → Feature Activation</strong></li>
+      <li>Pilih fitur yang ingin diaktifkan dari daftar</li>
+      <li>Masukkan kunci FLK yang diterima dari Gemilang</li>
+      <li>Klik <strong>Aktivasi Fitur</strong></li>
+      <li>Status fitur menjadi "Activated" — bisa langsung dipakai</li>
+    </ol>
+
+    <p>Untuk deactivate (sementara), klik tombol <strong>Deactivate</strong>. FLK key tetap valid dan bisa diaktifkan ulang nanti.</p>
+
+    <!-- ============================================================ -->
+    <h2 id="client-status"><span class="badge badge-shared">CLIENT</span> Cek Status Lisensi</h2>
+
+    <ol>
+      <li>Akses <code>https://erm.client.com/license/status</code> kapan saja</li>
+      <li>Atau dari menu <strong>Settings → License</strong> (jika tersedia di app)</li>
+    </ol>
+
+    <h3>Yang Ditampilkan</h3>
+    <ul>
+      <li>Status: <strong>VALID</strong> / <strong>INVALID</strong></li>
+      <li>License ID, Status, Max Usages</li>
+      <li>Expires At, Issued At, Not Before</li>
+      <li>Issuer (harus <code>gemilang-inti-teknologi</code>)</li>
+      <li>License Expires At — kapan kunci expired</li>
+      <li>Force Online After — sampai kapan token offline berlaku</li>
+      <li>Usage Fingerprint device</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <h2 id="client-troubleshoot"><span class="badge badge-shared">CLIENT</span> Troubleshoot</h2>
+
+    <table>
+      <thead><tr><th>Gejala</th><th>Kemungkinan Penyebab</th><th>Solusi</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Status: INVALID</td>
+          <td>Token expired atau corrupted</td>
+          <td>Buka <code>/license/install</code>, masukkan kunci ulang</td>
+        </tr>
+        <tr>
+          <td>"License key is invalid"</td>
+          <td>Kunci salah ketik, atau kunci sudah di-regenerate di Gemilang</td>
+          <td>Cek email/WA dari admin Gemilang untuk kunci terbaru</td>
+        </tr>
+        <tr>
+          <td>"Fingerprint already in use"</td>
+          <td>Ada usage lama dengan fingerprint sama yang belum di-revoke</td>
+          <td>Hubungi admin Gemilang untuk Revoke Usage di /licenses/{hash}</td>
+        </tr>
+        <tr>
+          <td>"License usage limit exceeded"</td>
+          <td>Slot installations penuh (max_installations terpakai)</td>
+          <td>Admin Gemilang naikkan max_installations atau revoke usage lama</td>
+        </tr>
+        <tr>
+          <td>"Invalid public key format"</td>
+          <td>Public key di storage corrupt atau format tidak match</td>
+          <td>Hapus <code>storage/app/licensing/state/.public_key</code> lalu aktivasi ulang</td>
+        </tr>
+        <tr>
+          <td>Banner warning di atas aplikasi</td>
+          <td>Heartbeat sudah gagal ≥3x</td>
+          <td>Cek koneksi internet ke license.gemilangteknologi.com</td>
+        </tr>
+        <tr>
+          <td>Modal lockout muncul</td>
+          <td>Heartbeat gagal lebih dari warning_days (3 hari)</td>
+          <td>Pulihkan koneksi, tunggu heartbeat berikutnya, atau aktivasi ulang</td>
+        </tr>
+        <tr>
+          <td>"Certificate chain verification failed"</td>
+          <td>Root key di server berubah</td>
+          <td>Aktivasi ulang dari install page (akan fetch bundle baru)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-arsitektur"><span class="badge badge-dev">DEV</span> Arsitektur Detail</h2>
+
+    <h3>Komponen Server (Gemilang)</h3>
+    <table>
+      <thead><tr><th>Komponen</th><th>Lokasi</th><th>Fungsi</th></tr></thead>
+      <tbody>
+        <tr><td>Package</td><td><code>masterix21/laravel-licensing</code></td><td>Core licensing engine</td></tr>
+        <tr><td>License Models</td><td><code>App\Models\LicenseCompany, LicenseApp, LicenseAppFeature, LicenseInstallation</code></td><td>Domain entities</td></tr>
+        <tr><td>Master Data</td><td><code>App\Models\MasterCompany, MasterApp, MasterAppFeature, MasterConfig</code></td><td>Config + reference data</td></tr>
+        <tr><td>API Controllers</td><td><code>App\Http\Controllers\Api\*</code></td><td>PublicKey, ClientConfig, ConfigSync, FeatureLicense, LicensePolicy</td></tr>
+        <tr><td>Listener</td><td><code>App\Listeners\SyncUsageToInstallation</code></td><td>Bridge package events ke LicenseInstallation</td></tr>
+        <tr><td>Signing</td><td><code>App\Services\Licensing\SigningService</code></td><td>Ed25519 sign payload</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Komponen Client (ERMv3)</h3>
+    <table>
+      <thead><tr><th>Komponen</th><th>Lokasi</th><th>Fungsi</th></tr></thead>
+      <tbody>
+        <tr><td>Package</td><td><code>masterix21/laravel-licensing-client</code></td><td>HTTP client + token storage</td></tr>
+        <tr><td>State Store</td><td><code>App\Services\Licensing\LicenseStateStore</code></td><td>Encrypted file-based state (key, public key, config)</td></tr>
+        <tr><td>Public Key Fetcher</td><td><code>App\Services\Licensing\PublicKeyFetcher</code></td><td>Fetch + normalize public key dari server</td></tr>
+        <tr><td>Client Config Fetcher</td><td><code>App\Services\Licensing\ClientConfigFetcher</code></td><td>Fetch + cache runtime config</td></tr>
+        <tr><td>Hardened Fingerprint</td><td><code>App\Services\Licensing\HardenedFingerprintGenerator</code></td><td>Multi-source device fingerprint + rich metadata</td></tr>
+        <tr><td>Normalizing Validator</td><td><code>App\Services\Licensing\NormalizingTokenValidator</code></td><td>Convert standard base64 ke base64url untuk PASETO v4</td></tr>
+        <tr><td>Heartbeat Service</td><td><code>App\Services\Licensing\HeartbeatService</code></td><td>Periodic ping + state tracking</td></tr>
+        <tr><td>Feature Guard</td><td><code>App\Services\Licensing\FeatureGuard</code></td><td>Cek izin fitur</td></tr>
+        <tr><td>Enforce License MW</td><td><code>App\Http\Middleware\EnforceLicense</code></td><td>Hard-stop guard di global web+api</td></tr>
+        <tr><td>Service Provider</td><td><code>App\Providers\LicensingServiceProvider</code></td><td>Wire semua dari state store ke config</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-deployment"><span class="badge badge-dev">DEV</span> Deployment</h2>
+
+    <h3>Gemilang (License Server) — Pertama Kali</h3>
+
+    <pre><code># 1. Clone
+cd /www/wwwroot
+git clone https://github.com/gtek2022/ermv33.git license.gemilangteknologi.com
+cd license.gemilangteknologi.com
+
+# 2. Install
+composer install --no-dev --optimize-autoloader
+
+# 3. Setup .env
+cp .env.example .env
+nano .env  # set DB credentials, APP_URL, dll
+
+# 4. App key + migrations
+php artisan key:generate
+php artisan migrate
+php artisan db:seed --class=DatabaseSeeder
+
+# 5. Generate Ed25519 keys (PENTING!)
+php artisan licensing:keys:make-root
+php artisan licensing:keys:issue-signing
+php artisan licensing:keys:list  # verify
+
+# 6. Cache
+php artisan optimize</code></pre>
+
+    <div class="callout callout-warning">
+      <div class="callout-title">⚠ Backup keys segera</div>
+      <code>storage/app/licensing/keys/</code> berisi private key Ed25519 yang tidak bisa di-recover.
+      Backup folder ini ke cold storage segera setelah generate. Kalau hilang, semua client
+      harus aktivasi ulang dengan kunci baru.
+    </div>
+
+    <h3>ERMv3 (Client) — Pertama Kali</h3>
+
+    <pre><code># 1. Clone
+cd /www/wwwroot
+git clone https://github.com/gtek2022/ermv3.git erm.client.com
+cd erm.client.com
+
+# 2. Install
+composer install --no-dev --optimize-autoloader
+
+# 3. Setup .env
+cp .env.example .env
+nano .env
+
+# .env HANYA butuh dua var licensing:
+#   LICENSING_SERVER_URL=https://license.gemilangteknologi.com
+#   LICENSING_API_VERSION=v1
+
+# 4. App key + migrations
+php artisan key:generate
+php artisan migrate
+
+# 5. Pastikan storage writable
+chown -R www:www storage
+chmod -R 775 storage
+
+# 6. Cache
+php artisan optimize
+
+# 7. Akses URL di browser → halaman aktivasi otomatis tampil</code></pre>
+
+    <h3>Update Existing Deploy</h3>
+    <pre><code>cd /www/wwwroot/&lt;app&gt;
+git fetch origin
+git reset --hard origin/master
+php artisan optimize:clear
+php artisan migrate          # kalau ada migration baru
+php artisan optimize</code></pre>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-env"><span class="badge badge-dev">DEV</span> Konfigurasi .env</h2>
+
+    <h3>Gemilang Server</h3>
+    <pre><code># Required
+APP_NAME=License
+APP_KEY=base64:...           # generate dengan php artisan key:generate
+APP_URL=https://license.gemilangteknologi.com
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=license
+DB_USERNAME=license
+DB_PASSWORD=...
+
+# Licensing keystore
+LICENSING_KEY_PASSPHRASE=&lt;random-32-char-passphrase&gt;
+LICENSING_KEY_SALT="${APP_KEY}"
+
+# Optional override (jarang diubah, ada default di config)
+LICENSING_ISSUER=gemilang-inti-teknologi</code></pre>
+
+    <h3>ERMv3 Client</h3>
+    <pre><code># Application
+APP_NAME="ERM Client Name"
+APP_KEY=base64:...
+APP_URL=https://erm.client.com
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=ermv3
+DB_USERNAME=ermv3
+DB_PASSWORD=...
+
+# Licensing — HANYA dua var ini yang dibutuhkan
+LICENSING_SERVER_URL=https://license.gemilangteknologi.com
+LICENSING_API_VERSION=v1</code></pre>
+
+    <div class="callout callout-success">
+      <div class="callout-title">✓ Tidak ada secret di .env client</div>
+      License key, public key, issuer, heartbeat config — semuanya disimpan di
+      <code>storage/app/licensing/state/</code> encrypted dengan APP_KEY.
+      Programmer dengan akses repo TIDAK BISA membaca lisensi dari .env.
+    </div>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-storage"><span class="badge badge-dev">DEV</span> Layout Storage</h2>
+
+    <h3>ERMv3 Client</h3>
+    <pre><code>storage/app/licensing/
+├── &lt;hash&gt;.token              # PASETO token (filename = sha256(license_key))
+├── public_key_bundle.json    # signing + root keys (encrypted JSON)
+├── refresh_after             # ISO timestamp kapan refresh
+├── last_heartbeat            # epoch terakhir heartbeat sukses
+├── entitlements.json         # license entitlements
+└── state/                    # custom state store (encrypted dengan APP_KEY)
+    ├── .install_uuid         # device UUID, generated sekali
+    ├── .lic_key              # license key
+    ├── .public_key           # signing public key (base64url)
+    ├── .server_url           # URL gemilang
+    ├── .client_config        # JSON: issuer, heartbeat, timeout, dll
+    ├── .verified_fp          # fingerprint saat last successful verify
+    ├── .hb_failures          # counter
+    ├── .hb_first_fail        # ISO timestamp
+    ├── .hb_last_ok           # ISO timestamp
+    ├── .hb_policy            # JSON: tolerance, warning_days
+    ├── .feature_catalog      # JSON: master features + activated state
+    └── .licensed_features    # JSON: feature → licensed: bool</code></pre>
+
+    <h3>Gemilang Server</h3>
+    <pre><code>storage/app/licensing/
+├── keys/                     # Ed25519 keystore (root + signing)
+│   ├── root.json
+│   └── &lt;kid&gt;.json
+└── public-bundle.json        # public bundle untuk distribution</code></pre>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-api"><span class="badge badge-dev">DEV</span> API Endpoints</h2>
+
+    <h3>Public (No Auth)</h3>
+    <table>
+      <thead><tr><th>Method</th><th>Path</th><th>Fungsi</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td><code>/api/platform/v1/public-key</code></td><td>Return signing key + root key untuk verifikasi token</td></tr>
+        <tr><td>GET</td><td><code>/api/platform/v1/client-config</code></td><td>Return runtime config client (issuer, heartbeat, timeout)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Licensing (Package, Authenticated by license_key)</h3>
+    <table>
+      <thead><tr><th>Method</th><th>Path</th><th>Fungsi</th></tr></thead>
+      <tbody>
+        <tr><td>POST</td><td><code>/api/licensing/v1/activate</code></td><td>Aktivasi license + register usage</td></tr>
+        <tr><td>POST</td><td><code>/api/licensing/v1/deactivate</code></td><td>Cabut usage</td></tr>
+        <tr><td>POST</td><td><code>/api/licensing/v1/refresh</code></td><td>Refresh token</td></tr>
+        <tr><td>POST</td><td><code>/api/licensing/v1/validate</code></td><td>Validasi license + fingerprint</td></tr>
+        <tr><td>POST</td><td><code>/api/licensing/v1/heartbeat</code></td><td>Ping berkala</td></tr>
+        <tr><td>POST</td><td><code>/api/licensing/v1/policy</code></td><td>Get policy (tolerance, warning_days) per license</td></tr>
+        <tr><td>POST</td><td><code>/api/licensing/v1/licenses/show</code></td><td>Detail license info</td></tr>
+        <tr><td>POST</td><td><code>/api/licensing/v1/token</code></td><td>Reissue token tanpa register usage baru</td></tr>
+        <tr><td>GET</td><td><code>/api/licensing/v1/health</code></td><td>Health check</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Platform (Custom Gemilang)</h3>
+    <table>
+      <thead><tr><th>Method</th><th>Path</th><th>Fungsi</th></tr></thead>
+      <tbody>
+        <tr><td>POST</td><td><code>/api/platform/v1/config-sync</code></td><td>Sync configs + feature flags + policy</td></tr>
+        <tr><td>POST</td><td><code>/api/platform/v1/feature/activate</code></td><td>Aktivasi fitur dengan FLK key</td></tr>
+        <tr><td>POST</td><td><code>/api/platform/v1/feature/deactivate</code></td><td>Deactivate fitur</td></tr>
+        <tr><td>POST</td><td><code>/api/platform/v1/feature/status</code></td><td>Cek status aktivasi fitur</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-integrasi"><span class="badge badge-dev">DEV</span> Integrasi di Code (ERMv3)</h2>
+
+    <h3>Cek License di Controller</h3>
+    <pre><code>use LucaLongo\LaravelLicensingClient\Facades\LaravelLicensingClient;
+
+if (! LaravelLicensingClient::isValid()) {
+    return redirect()->route('license.install');
+}</code></pre>
+
+    <h3>Cek Fitur di Controller</h3>
+    <pre><code>use App\Services\Licensing\FeatureGuard;
+
+public function exportPdf(FeatureGuard $guard) {
+    if (! $guard->canAccess('export-pdf')) {
+        abort(403, 'Fitur export PDF belum aktif. Hubungi admin.');
+    }
+    // ... export logic
+}</code></pre>
+
+    <h3>Cek Fitur di Blade</h3>
+    <pre><code>{{-- Tampilkan menu hanya jika fitur aktif --}}
+@feature('dashboard')
+    &lt;a href="/dashboard"&gt;Dashboard&lt;/a&gt;
+@endfeature
+
+{{-- Tampilkan locked-state jika belum aktif --}}
+@unlessfeature('reports')
+    &lt;div class="locked"&gt;
+        Fitur Reports belum aktif. Hubungi admin untuk aktivasi.
+    &lt;/div&gt;
+@endunlessfeature</code></pre>
+
+    <h3>Route-Level Middleware</h3>
+    <pre><code>Route::get('/reports', [ReportController::class, 'index'])
+    ->middleware('feature:reports');
+
+Route::middleware('feature:advanced-analytics')->group(function () {
+    Route::get('/analytics', [AnalyticsController::class, 'index']);
+    Route::get('/analytics/export', [AnalyticsController::class, 'export']);
+});</code></pre>
+
+    <h3>Akses State Store dari Code</h3>
+    <pre><code>use App\Services\Licensing\LicenseStateStore;
+
+public function someMethod(LicenseStateStore $store) {
+    $key = $store->getLicenseKey();          // null jika belum aktivasi
+    $cfg = $store->getClientConfig();        // array config dari server
+    $hb  = $store->getLastSuccessAt();       // Carbon timestamp
+    $fp  = $store->getVerifiedFingerprint(); // null jika never verified
+}</code></pre>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-fingerprint"><span class="badge badge-dev">DEV</span> Fingerprint Generator</h2>
+
+    <p><strong>HardenedFingerprintGenerator</strong> menggabungkan multiple sources:</p>
+
+    <pre><code>fingerprint = sha256(
+  hostname        +  // gethostname()
+  machine_id      +  // /etc/machine-id (Linux), wmic UUID (Windows)
+  "php-" + version +
+  "laravel-" + version +
+  "app-" + sha256(APP_KEY).substr(0, 32) +
+  "db-" + sha256(host + ":" + database)
+)</code></pre>
+
+    <p>Setiap component yang berubah akan invalidate fingerprint:</p>
+    <ul>
+      <li><strong>Cloning ke server lain</strong> → machine_id beda → invalid</li>
+      <li><strong>Ganti APP_KEY</strong> → invalid (force re-aktivasi)</li>
+      <li><strong>Pindah database</strong> → invalid</li>
+      <li><strong>Upgrade Laravel/PHP</strong> → invalid (rare, biasanya minor patch tidak ganti major version)</li>
+    </ul>
+
+    <h3>Metadata yang Dikirim ke Server</h3>
+    <p><code>HardenedFingerprintGenerator::getMetadata()</code> mengirim:</p>
+    <pre><code>{
+  "client_type": "ermv3",
+  "name": "vps.server.com",
+  "user_agent": "ERMv3/13.11.2 PHP/8.3.12",
+  "meta": {
+    "app": "ERM - ABM",
+    "app_url": "https://erm.client.com",
+    "app_env": "production",
+    "app_version": "13.11.2",
+    "php_version": "8.3.12",
+    "os": "Linux",
+    "os_release": "5.4.0-208-generic",
+    "hostname": "vps.server.com",
+    "machine_id": "74a9a1ba06e13820cbe5ac583b37c5c2",
+    "mac_address": "26:2c:2a:46:c9:34",
+    "fingerprint": "ba8445162068cf7f...",
+    "timezone": "Asia/Jakarta",
+    "server_ip": "202.157.187.186",
+    "domain": "erm.client.com",
+    "activated_at": "2026-05-24T10:46:10+00:00"
+  }
+}</code></pre>
+
+    <p>Server menyimpan metadata di <code>license_usages.meta</code> (JSON column) dan kemudian event listener <code>SyncUsageToInstallation</code> meng-copy ke <code>license_installations</code> untuk dibaca admin di UI.</p>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-heartbeat"><span class="badge badge-dev">DEV</span> Heartbeat Setup (Backend &amp; Frontend)</h2>
+
+    <p>Heartbeat adalah mekanisme verifikasi berkala antara client (ERMv3) dan server (Gemilang). Sistem berlapis dua: <strong>backend scheduler</strong> (server-side cron) untuk verifikasi tanpa user, dan <strong>frontend poller</strong> (browser-side JS) untuk responsiveness UI.</p>
+
+    <h3>Diagram Heartbeat Layered</h3>
+    <div class="diagram">┌─────────────────────────────────────────────────────────────────┐
+│                        Browser (User)                            │
+│                                                                  │
+│  license-banner.blade.php (Blade component)                      │
+│   • setInterval poll /license/heartbeat-status (every 5 min)     │
+│   • Tampilkan banner warning kalau status='warning'              │
+│   • Tampilkan modal lockout kalau status='lockout'               │
+│   • Tombol "Verify Now" → POST /license/heartbeat-ping           │
+└────────────────────┬────────────────────────────────────────────┘
+                     │ HTTP (same-origin)
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  ERMv3 Backend (Laravel)                         │
+│                                                                  │
+│  GET /license/heartbeat-status                                   │
+│   → LicenseHeartbeatController@status                            │
+│   → HeartbeatService::getStatusData()                            │
+│   → return cached state (no network call)                        │
+│                                                                  │
+│  POST /license/heartbeat-ping                                    │
+│   → LicenseHeartbeatController@ping                              │
+│   → HeartbeatService::ping() → POST ke Gemilang                  │
+│                                                                  │
+│  Scheduler (cron): every hour                                    │
+│   → php artisan license:heartbeat                                │
+│   → HeartbeatService::ping() → POST ke Gemilang                  │
+└────────────────────┬────────────────────────────────────────────┘
+                     │ HTTPS PASETO
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  Gemilang License Server                         │
+│  POST /api/licensing/v1/heartbeat                                │
+│   → update last_seen_at di license_usages                        │
+│   → return { success, message }                                  │
+└─────────────────────────────────────────────────────────────────┘</div>
+
+    <h3>1. Backend Scheduler Setup</h3>
+
+    <p>Heartbeat dijadwalkan via Laravel scheduler. Pastikan cron Laravel aktif di server:</p>
+
+    <pre><code># Edit crontab system
+crontab -e
+
+# Tambahkan baris ini (jalan setiap menit, scheduler decide actual interval):
+* * * * * cd /www/wwwroot/erm.client.com &amp;&amp; php artisan schedule:run &gt;&gt; /dev/null 2&gt;&amp;1</code></pre>
+
+    <p>Verifikasi schedule terdaftar:</p>
+    <pre><code>php artisan schedule:list
+
+# Output yang diharapkan:
+# 0 * * * *  php artisan license:heartbeat ............... Next due: in 23 minutes</code></pre>
+
+    <h4>Konfigurasi Schedule di <code>bootstrap/app.php</code></h4>
+    <p>Schedule otomatis di-register oleh package <code>laravel-licensing-client</code>. Tapi kita bisa override interval di <code>routes/console.php</code> atau via app schedule:</p>
+
+    <pre><code>// routes/console.php atau di App\Console\Kernel::schedule
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Schedule as ScheduleFacade;
+
+ScheduleFacade::command('license:heartbeat')
+    -&gt;hourly()                  // default — bisa diganti
+    -&gt;withoutOverlapping(15)    // skip jika previous run masih jalan
+    -&gt;onFailure(function () {
+        \Log::warning('License heartbeat scheduled task failed');
+    });</code></pre>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 Interval Heartbeat</div>
+      Default 1 jam (3600 detik). Bisa diatur via <code>licensing.heartbeat_interval</code> di Master Configs Gemilang. Setelah diubah server-side, client akan dapat update via <code>client-config</code> endpoint dalam 6 jam berikutnya.
+    </div>
+
+    <h4>Manual Trigger via CLI</h4>
+    <pre><code># Jalankan heartbeat sekarang juga (untuk testing/debug)
+php artisan license:heartbeat
+
+# Output sukses:
+# [License] Heartbeat OK. Status: ok
+
+# Output gagal:
+# [License] Heartbeat FAILED. Consecutive failures: 1 / tolerance: 3. Status: ok</code></pre>
+
+    <h3>2. Backend Service Architecture</h3>
+
+    <p>Komponen backend yang saling terkait:</p>
+
+    <table>
+      <thead><tr><th>File</th><th>Tanggung Jawab</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>App\Services\Licensing\HeartbeatService</code></td>
+          <td>Core logic: ping(), getStatus(), getStatusData(), refreshPolicy()</td>
+        </tr>
+        <tr>
+          <td><code>App\Services\Licensing\LicenseStateStore</code></td>
+          <td>Persist failure counter, last_ok timestamp, policy ke encrypted file</td>
+        </tr>
+        <tr>
+          <td><code>App\Console\Commands\LicenseHeartbeatCommand</code></td>
+          <td>Artisan command yang dijalankan scheduler</td>
+        </tr>
+        <tr>
+          <td><code>App\Http\Controllers\Api\LicenseHeartbeatController</code></td>
+          <td>HTTP endpoint untuk frontend (status + ping)</td>
+        </tr>
+        <tr>
+          <td><code>App\Http\Middleware\EnforceLicense</code></td>
+          <td>Cek <code>$status === 'lockout'</code> → flag session, layout render modal</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>State yang Dikelola</h4>
+    <p>HeartbeatService memakai <code>LicenseStateStore</code> untuk simpan state berikut (semua di <code>storage/app/licensing/state/</code> encrypted):</p>
+
+    <table>
+      <thead><tr><th>File</th><th>Isi</th><th>Update saat</th></tr></thead>
+      <tbody>
+        <tr><td><code>.hb_failures</code></td><td>Counter consecutive failures</td><td>+1 saat fail, reset 0 saat OK</td></tr>
+        <tr><td><code>.hb_first_fail</code></td><td>ISO timestamp first fail di streak ini</td><td>Set saat counter dari 0 → 1, hapus saat OK</td></tr>
+        <tr><td><code>.hb_last_ok</code></td><td>ISO timestamp last successful heartbeat</td><td>Set setiap kali OK</td></tr>
+        <tr><td><code>.hb_policy</code></td><td>JSON: {tolerance, warning_days}</td><td>Refresh dari config-sync setiap heartbeat OK</td></tr>
+        <tr><td><code>.verified_fp</code></td><td>SHA-256 fingerprint saat last verify</td><td>Set saat heartbeat OK</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Logic Status Resolution</h4>
+    <pre><code>HeartbeatService::getStatus() returns:
+
+if (! hasEverVerified())                      → 'unverified'
+if (failures &lt; tolerance)                     → 'ok'
+if (failures &gt;= tolerance &amp;&amp; firstFail age &lt; warning_days) → 'warning'
+if (failures &gt;= tolerance &amp;&amp; firstFail age &gt;= warning_days) → 'lockout'</code></pre>
+
+    <h3>3. Frontend Poller Setup</h3>
+
+    <h4>Pasang Banner di Layout</h4>
+    <p>Tambahkan komponen Blade di layout utama aplikasi (cukup sekali, akan muncul di semua halaman):</p>
+
+    <pre><code>{{-- resources/views/layouts/app.blade.php --}}
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    {{-- ... --}}
+    &lt;meta name="csrf-token" content="{{ csrf_token() }}"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;x-license-banner /&gt;  {{-- ← banner heartbeat --}}
+
+    &lt;div class="main-content"&gt;
+        @yield('content')
+    &lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+    <p>Component <code>x-license-banner</code> otomatis:</p>
+    <ul>
+      <li>Inject CSS untuk banner (sticky di atas) dan modal lockout (full-screen overlay)</li>
+      <li>Inject JavaScript yang polling tiap 5 menit ke <code>/license/heartbeat-status</code></li>
+      <li>Render banner kalau response.status === 'warning'</li>
+      <li>Render modal kalau response.status === 'lockout'</li>
+      <li>Tombol "Verify Now" yang trigger ping manual</li>
+    </ul>
+
+    <h4>Customize Poll Interval</h4>
+
+    <p>Default 5 menit. Untuk ubah, edit <code>license-banner.blade.php</code> baris 110:</p>
+
+    <pre><code>// resources/views/components/license-banner.blade.php
+var POLL_INTERVAL   = 5 * 60 * 1000;  // 5 menit (default)
+// var POLL_INTERVAL = 1 * 60 * 1000;  // 1 menit untuk debugging
+// var POLL_INTERVAL = 10 * 60 * 1000; // 10 menit untuk minimasi traffic
+
+var DISMISS_TIMEOUT = 30 * 60 * 1000; // 30 menit setelah dismiss banner muncul lagi</code></pre>
+
+    <div class="callout callout-warning">
+      <div class="callout-title">⚠ Trade-off Poll Interval</div>
+      <ul style="margin-bottom:0;">
+        <li><strong>Lebih cepat (1-2 menit)</strong>: UI lebih responsive saat ada perubahan status. Tapi traffic lebih banyak.</li>
+        <li><strong>Lebih lambat (10-15 menit)</strong>: Hemat resource. Tapi user harus refresh halaman manual untuk lihat status terbaru.</li>
+        <li><strong>Catatan</strong>: poll status TIDAK trigger heartbeat ke Gemilang — ini cuma baca cached state lokal. Aman buat lebih sering.</li>
+      </ul>
+    </div>
+
+    <h4>Endpoint Frontend yang Dipanggil</h4>
+
+    <table>
+      <thead><tr><th>Endpoint</th><th>Method</th><th>Trigger</th><th>Response</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>/license/heartbeat-status</code></td>
+          <td>GET</td>
+          <td>Setiap 5 menit otomatis</td>
+          <td>JSON: {status, failures, days_until_lockout, licensed_features}</td>
+        </tr>
+        <tr>
+          <td><code>/license/heartbeat-ping</code></td>
+          <td>POST</td>
+          <td>User klik "Verify Now"</td>
+          <td>Trigger heartbeat aktual ke Gemilang + return status baru</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Response JSON Format</h4>
+
+    <pre><code>// GET /license/heartbeat-status response:
+{
+  "success": true,
+  "data": {
+    "status": "ok",                           // ok | warning | lockout | unverified
+    "failures": 0,
+    "tolerance": 3,
+    "warning_days": 3,
+    "days_until_lockout": null,               // null kalau status != warning
+    "first_failure_at": null,                 // ISO timestamp atau null
+    "last_success_at": "2026-05-24T10:46:10+00:00",
+    "has_ever_verified": true,
+    "licensed_features": {
+      "dashboard": { "licensed": true, "valid_until": null, "status": "active" }
+    },
+    "active_feature_keys": ["dashboard", "reports"]
+  }
+}</code></pre>
+
+    <h3>4. Custom UI Components</h3>
+
+    <p>Kalau mau tampilan berbeda dari default <code>x-license-banner</code>, panggil endpoint langsung dari kode JavaScript custom:</p>
+
+    <pre><code>// Custom polling logic
+async function checkLicense() {
+    try {
+        const response = await fetch('/license/heartbeat-status', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const result = await response.json();
+
+        if (!result.success) return;
+
+        const { status, days_until_lockout, last_success_at } = result.data;
+
+        // Update your custom UI
+        if (status === 'lockout') {
+            showLockoutModal();
+        } else if (status === 'warning') {
+            showWarningBanner(days_until_lockout);
+        } else {
+            hideAllNotifications();
+        }
+    } catch (e) {
+        console.warn('License check failed', e);
+    }
+}
+
+// Poll setiap 5 menit
+setInterval(checkLicense, 5 * 60 * 1000);
+checkLicense(); // initial check</code></pre>
+
+    <h3>5. Manual Trigger dari Frontend</h3>
+
+    <p>Tombol "Verify Now" untuk user yang mau force re-check:</p>
+
+    <pre><code>// HTML
+&lt;button onclick="verifyLicense()"&gt;Verify Now&lt;/button&gt;
+
+// JS
+async function verifyLicense() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    const response = await fetch('/license/heartbeat-ping', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        credentials: 'same-origin'
+    });
+
+    if (response.status === 429) {
+        alert('Tunggu 30 detik sebelum mencoba lagi.');
+        return;
+    }
+
+    const result = await response.json();
+    if (result.success) {
+        alert('License verified ✓');
+    } else {
+        alert('Verification failed: ' + result.message);
+    }
+}</code></pre>
+
+    <div class="callout callout-info">
+      <div class="callout-title">🔒 Rate Limit</div>
+      Endpoint <code>/license/heartbeat-ping</code> rate-limited 1 request per 30 detik per IP. Untuk mencegah abuse — endpoint ini trigger network call ke Gemilang.
+    </div>
+
+    <h3>6. Testing Heartbeat Lokal</h3>
+
+    <p>Skenario yang bisa di-test untuk verifikasi behavior:</p>
+
+    <h4>Test: Heartbeat Sukses</h4>
+    <pre><code># 1. Pastikan ermv3 sudah aktivasi
+php artisan license:diagnose
+# Status harus VALID
+
+# 2. Trigger heartbeat manual
+php artisan license:heartbeat
+# Output: [License] Heartbeat OK. Status: ok
+
+# 3. Cek state
+cat storage/app/licensing/state/.hb_last_ok
+# Harus berisi ISO timestamp baru</code></pre>
+
+    <h4>Test: Heartbeat Gagal (Simulate Server Down)</h4>
+    <pre><code># 1. Edit storage/app/licensing/state/.server_url ke URL invalid
+# (atau stop gemilang server lokal)
+
+# 2. Trigger heartbeat
+php artisan license:heartbeat
+# Output: [License] Heartbeat FAILED. Consecutive failures: 1 / tolerance: 3
+
+# 3. Trigger 2x lagi → counter naik jadi 3
+php artisan license:heartbeat
+php artisan license:heartbeat
+
+# 4. Cek status
+php artisan tinker
+&gt;&gt;&gt; app(App\Services\Licensing\HeartbeatService::class)-&gt;getStatus()
+=&gt; "warning"
+
+# 5. Buka aplikasi di browser → banner warning muncul</code></pre>
+
+    <h4>Test: Lockout (Simulate 3+ hari gagal)</h4>
+    <pre><code># Manipulate first_fail timestamp ke 4 hari lalu
+php artisan tinker
+&gt;&gt;&gt; $store = app(App\Services\Licensing\LicenseStateStore::class);
+&gt;&gt;&gt; // (di state store kita reset failures counter dulu, set ulang ke 3+,
+&gt;&gt;&gt; //  lalu manipulate .hb_first_fail file langsung)
+
+# Atau cara lebih cepat: edit file langsung
+echo "$(date -d '4 days ago' --iso-8601=seconds)" | php artisan license:encrypt-state-file .hb_first_fail
+echo "5" | php artisan license:encrypt-state-file .hb_failures
+
+# Buka aplikasi → modal lockout muncul, tidak bisa ditutup</code></pre>
+
+    <h4>Test: Recovery</h4>
+    <pre><code># 1. Pastikan gemilang server bisa diakses lagi
+curl https://license.gemilangteknologi.com/api/platform/v1/public-key
+
+# 2. Trigger heartbeat
+php artisan license:heartbeat
+# Output: [License] Heartbeat OK
+
+# 3. Counter reset, status kembali OK
+php artisan license:diagnose
+# Status: VALID</code></pre>
+
+    <h3>7. Override Heartbeat Behavior per License</h3>
+
+    <p>Admin Gemilang bisa set tolerance &amp; warning_days berbeda per license (override default global).</p>
+
+    <ol>
+      <li>Buka <code>/licenses/{hash}</code> di Gemilang admin</li>
+      <li>Section <strong>Heartbeat Policy Override</strong></li>
+      <li>Set Failure Tolerance + Warning Days → Save</li>
+    </ol>
+
+    <p>Di sisi backend Gemilang, policy disimpan di <code>master_app_configs</code> dengan <code>app_code = 'license_{license_id}'</code>. Saat config-sync dipanggil, server lookup override ini dulu, baru fallback ke global default.</p>
+
+    <p>Di sisi client (ermv3), policy ditarik via <code>config-sync</code> setiap heartbeat sukses, lalu cached di <code>storage/app/licensing/state/.hb_policy</code> (encrypted).</p>
+
+    <h3>8. Disable Heartbeat (Development Only)</h3>
+
+    <div class="callout callout-danger">
+      <div class="callout-title">🚨 JANGAN dipakai di production</div>
+      Disable heartbeat = lisensi tidak bisa di-revoke remote. Hanya untuk development env.
+    </div>
+
+    <pre><code># .env (development)
+LICENSING_HEARTBEAT_ENABLED=false
+
+# Atau via Master Config Gemilang (efek ke semua client)
+# Master Data → Configs → key: licensing.heartbeat_enabled → value: false</code></pre>
+
+    <h3>9. Monitoring Heartbeat di Gemilang</h3>
+
+    <p>Setiap heartbeat dari client dicatat di tabel <code>license_logs_heartbeat</code>. Lihat di:</p>
+
+    <ul>
+      <li><strong>UI Admin</strong>: <code>/licenses/{hash}</code> → section "Recent Heartbeats" (20 terakhir)</li>
+      <li><strong>Query langsung</strong> untuk monitoring/dashboard:</li>
+    </ul>
+
+    <pre><code>-- Heartbeat health overview 24 jam terakhir
+SELECT
+    app_code,
+    status,
+    COUNT(*) as count
+FROM license_logs_heartbeat
+WHERE heartbeat_at &gt; NOW() - INTERVAL '24 hours'
+GROUP BY app_code, status
+ORDER BY app_code, status;
+
+-- Client yang heartbeat-nya delayed
+SELECT
+    li.hostname,
+    li.domain,
+    li.last_heartbeat_at,
+    NOW() - li.last_heartbeat_at AS delay
+FROM license_installations li
+WHERE li.status = 'active'
+  AND li.last_heartbeat_at &lt; NOW() - INTERVAL '2 hours'
+ORDER BY delay DESC;</code></pre>
+
+    <!-- ============================================================ -->
+    <h2 id="dev-debug"><span class="badge badge-dev">DEV</span> Debugging</h2>
+
+    <h3>Artisan Commands ERMv3</h3>
+    <pre><code># Cek state license + token + validation
+php artisan license:diagnose
+
+# Cek detail token retrieval mechanism
+php artisan license:diagnose-deep
+
+# Aktivasi via CLI (tanpa web UI)
+php artisan license:activate LIC-XXXX-XXXX-XXXX-XXXX
+
+# Force heartbeat sekarang
+php artisan license:heartbeat
+
+# Refresh token
+php artisan license:refresh
+
+# Validate token
+php artisan license:validate
+
+# Lihat info license dari token
+php artisan license:info
+
+# Deactivate (cabut usage)
+php artisan license:deactivate</code></pre>
+
+    <h3>Artisan Commands Gemilang</h3>
+    <pre><code># Manage Ed25519 keys
+php artisan licensing:keys:list
+php artisan licensing:keys:make-root
+php artisan licensing:keys:issue-signing
+php artisan licensing:keys:rotate
+php artisan licensing:keys:revoke
+
+# Sync existing LicenseCompany ke package's licenses table
+# (jalankan kalau ada hash mismatch — biasanya tidak perlu)
+php artisan licenses:sync-package
+
+# Sinkronisasi public key ke master_configs
+php artisan licensing:sync-public-key
+
+# Cek expirations + send notifications (cron)
+php artisan licensing:check-expirations</code></pre>
+
+    <h3>Cek Database Langsung</h3>
+    <pre><code># Gemilang
+psql -U license -d license -c "SELECT id, license_key, status, expires_at FROM license_companies;"
+psql -U license -d license -c "SELECT id, status, license_id, usage_fingerprint FROM license_usages WHERE status='active';"
+
+# ERMv3
+ls -la storage/app/licensing/
+ls -la storage/app/licensing/state/</code></pre>
+
+    <h3>Logs</h3>
+    <pre><code># ERMv3 logs licensing
+tail -f storage/logs/laravel.log | grep -i licensing
+
+# Gemilang logs
+tail -f storage/logs/laravel.log
+
+# Specific event
+grep "Licensing\|Public key\|fingerprint" storage/logs/laravel.log | tail -50</code></pre>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2 id="faq">FAQ</h2>
+
+    <h3>Umum</h3>
+
+    <details>
+      <summary>Apa beda License Key dengan Feature License Key (FLK)?</summary>
+      <p><strong>License Key</strong> (<code>LIC-XXXX-XXXX-XXXX-XXXX</code>) adalah kunci utama untuk mengaktifkan aplikasi ERMv3. Tanpa ini aplikasi tidak bisa diakses sama sekali.</p>
+      <p><strong>Feature License Key</strong> (<code>FLK-XXXX-XXXX-XXXX-XXXX</code>) adalah kunci tambahan untuk mengaktifkan fitur premium tertentu di dalam ERMv3. Aplikasi sudah bisa diakses dengan License Key, tapi fitur premium baru aktif setelah FLK dimasukkan.</p>
+    </details>
+
+    <details>
+      <summary>Berapa lama lisensi berlaku?</summary>
+      <p>Default 365 hari, tapi admin Gemilang bisa atur sesuai kontrak (90, 180, 365, 730 hari, dst). Setelah expired, lisensi bisa di-renew tanpa kehilangan fingerprint atau data.</p>
+    </details>
+
+    <details>
+      <summary>Apa yang terjadi kalau internet putus?</summary>
+      <p>ERMv3 punya <strong>grace period 7 hari</strong>. Selama itu aplikasi tetap bisa digunakan. Heartbeat akan retry otomatis. Setelah grace period habis, aplikasi akan locked dan harus reconnect ke Gemilang untuk re-validate.</p>
+    </details>
+
+    <details>
+      <summary>Apakah lisensi bisa dipindah ke server lain?</summary>
+      <p>Bisa. Caranya:</p>
+      <ol>
+        <li>Admin Gemilang revoke usage server lama (di /licenses/{hash} → Installation Slots → Revoke)</li>
+        <li>Install ERMv3 di server baru</li>
+        <li>Aktivasi ulang dengan kunci yang sama</li>
+      </ol>
+      <p>Fingerprint baru akan generate otomatis dari server baru, dan slot lama bisa dipakai server baru.</p>
+    </details>
+
+    <h3>Untuk Admin</h3>
+
+    <details>
+      <summary>Lupa kunci lisensi yang sudah dikirim ke client. Bagaimana?</summary>
+      <p>Buka <code>/licenses/{hash}</code> → section "Kunci Lisensi Lupa?" → Opsi 1 → klik <strong>Tampilkan Kunci</strong>. Kunci asli akan muncul di modal (bisa dipulihkan selama APP_KEY Gemilang tidak pernah berubah).</p>
+    </details>
+
+    <details>
+      <summary>Bagaimana kalau kunci lisensi bocor?</summary>
+      <p>Generate kunci baru via Opsi 2. Kunci lama otomatis tidak valid lagi, semua usage di-revoke. Client harus aktivasi ulang dengan kunci baru.</p>
+    </details>
+
+    <details>
+      <summary>Bagaimana cara naikkan max_installations?</summary>
+      <p>Saat ini lewat database manual atau via tinker. Edit form belum tersedia di UI:</p>
+      <pre><code>php artisan tinker
+&gt; \App\Models\LicenseCompany::find(1)->update(['max_installations' =&gt; 5]);</code></pre>
+    </details>
+
+    <details>
+      <summary>Client ada 2 server (staging + prod), kunci yang sama bisa?</summary>
+      <p>Bisa, asal max_installations ≥ 2. Setiap server punya fingerprint berbeda, jadi memakan slot terpisah.</p>
+    </details>
+
+    <details>
+      <summary>Apa yang terjadi kalau saya delete LicenseCompany?</summary>
+      <p>Soft-delete: data tetap di DB tapi tidak aktif lagi. Semua usage hard-delete (slot bebas). Audit log tetap ada di <code>license_logs_audit</code>.</p>
+    </details>
+
+    <h3>Untuk Developer</h3>
+
+    <details>
+      <summary>Mengapa public key tidak boleh di .env?</summary>
+      <p>Programmer dengan akses repo bisa baca .env (atau .env.example, atau git history). Kalau public key di-leak, attacker bisa pakai untuk verify token palsu. Lebih aman fetch on-demand dari server dan cache encrypted di storage.</p>
+    </details>
+
+    <details>
+      <summary>Mengapa tidak pakai JWT saja, kenapa PASETO?</summary>
+      <p>JWT punya banyak issue (algorithm confusion, "none" attack, kompleksitas spec). PASETO v4 lebih simpel, sudah hard-code Ed25519, tidak ada algorithm switching, dan secure-by-default.</p>
+    </details>
+
+    <details>
+      <summary>Bagaimana cara test licensing tanpa Gemilang server live?</summary>
+      <p>Gunakan local Gemilang di port 8001 (atau Docker), arahkan <code>LICENSING_SERVER_URL</code> ermv3 ke <code>http://127.0.0.1:8001</code>. Generate kunci di local Gemilang dan aktivasi ermv3 lokal.</p>
+    </details>
+
+    <details>
+      <summary>Apakah saya bisa mengubah issuer setelah deploy?</summary>
+      <p>Bisa, tapi <strong>semua client harus aktivasi ulang</strong> karena PASETO token punya claim <code>iss</code> yang fixed di issuance. Token lama dengan issuer berbeda akan rejected. Setelah ubah issuer di Gemilang config, jalankan revoke all usages, client otomatis akan dapat token baru saat aktivasi.</p>
+    </details>
+
+    <details>
+      <summary>Apakah heartbeat membebani server?</summary>
+      <p>Tidak signifikan. Default 1 ping per jam per client. Cuma cek fingerprint match di DB + update last_seen_at. Untuk 1000 clients, beban &lt;1 req/detik rata-rata.</p>
+    </details>
+
+    <details>
+      <summary>Bagaimana memantau heartbeat health di production?</summary>
+      <p>Gemilang otomatis log ke <code>license_logs_heartbeat</code>. Admin bisa lihat di <code>/licenses/{hash}</code> section Recent Heartbeats. Atau query langsung:</p>
+      <pre><code>SELECT app_code, status, COUNT(*) FROM license_logs_heartbeat
+WHERE heartbeat_at &gt; NOW() - INTERVAL '24 hours'
+GROUP BY app_code, status;</code></pre>
+    </details>
+
+    <details>
+      <summary>Apa yang terjadi kalau Gemilang server down?</summary>
+      <p>ERMv3 client masuk ke <strong>grace mode</strong> (7 hari default). Aplikasi tetap berjalan, tapi:</p>
+      <ul>
+        <li>Setelah 3 heartbeat gagal → banner warning di atas aplikasi</li>
+        <li>Setelah 3 hari → modal lockout muncul, tidak bisa ditutup</li>
+        <li>Setelah grace period habis → aplikasi blocked total</li>
+      </ul>
+      <p>Solusi: redundant Gemilang dengan load balancer, atau monitoring SLA Gemilang berbeda dari ERMv3.</p>
+    </details>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2 id="glossary">Glosarium</h2>
+
+    <table>
+      <thead><tr><th>Istilah</th><th>Definisi</th></tr></thead>
+      <tbody>
+        <tr><td>License Key</td><td>Kode <code>LIC-XXXX-XXXX-XXXX-XXXX</code> untuk aktivasi aplikasi.</td></tr>
+        <tr><td>FLK</td><td>Feature License Key — <code>FLK-XXXX-XXXX-XXXX-XXXX</code> untuk fitur premium.</td></tr>
+        <tr><td>Fingerprint</td><td>Hash unik device, gabungan dari hostname + machine_id + APP_KEY + DB.</td></tr>
+        <tr><td>PASETO</td><td>Platform-Agnostic SEcurity TOkens. Token format yang dipakai di sistem ini.</td></tr>
+        <tr><td>Ed25519</td><td>Algoritma signature kriptografis dari Daniel J. Bernstein, dipakai PASETO v4.</td></tr>
+        <tr><td>Issuer</td><td>String identifier penerbit token. Default <code>gemilang-inti-teknologi</code>.</td></tr>
+        <tr><td>Heartbeat</td><td>Ping berkala dari client ke server untuk verifikasi lisensi.</td></tr>
+        <tr><td>Grace Period</td><td>Periode toleransi kalau heartbeat gagal terus (default 7 hari).</td></tr>
+        <tr><td>Slot</td><td>Satu unit installation di license. max_installations menentukan jumlah slot.</td></tr>
+        <tr><td>Usage</td><td>Record installation aktif di package's <code>license_usages</code> table.</td></tr>
+        <tr><td>Installation</td><td>Record di <code>license_installations</code> dengan info device lengkap.</td></tr>
+        <tr><td>State Store</td><td>File-based encrypted storage di ERMv3 untuk simpan license state.</td></tr>
+        <tr><td>Bundle</td><td>JSON berisi public key (signing + root) dari Gemilang.</td></tr>
+        <tr><td>Lockout</td><td>Modal full-screen yang tidak bisa ditutup, mengharuskan re-aktivasi.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============================================================ -->
+    <h2 id="error-codes">Error Codes</h2>
+
+    <table>
+      <thead><tr><th>Code</th><th>HTTP</th><th>Arti</th></tr></thead>
+      <tbody>
+        <tr><td><code>INVALID_KEY</code></td><td>404</td><td>License key tidak ditemukan / format salah</td></tr>
+        <tr><td><code>SUSPENDED_LICENSE</code></td><td>423</td><td>License di-suspend oleh admin</td></tr>
+        <tr><td><code>CANCELLED_LICENSE</code></td><td>423</td><td>License di-cancel permanent</td></tr>
+        <tr><td><code>EXPIRED_LICENSE</code></td><td>410</td><td>Expires_at sudah lewat (di luar grace period)</td></tr>
+        <tr><td><code>FINGERPRINT_MISMATCH</code></td><td>403</td><td>Fingerprint device tidak match usage record</td></tr>
+        <tr><td><code>FINGERPRINT_CONFLICT</code></td><td>409</td><td>Fingerprint sudah dipakai usage lain (unique constraint)</td></tr>
+        <tr><td><code>USAGE_LIMIT_REACHED</code></td><td>409</td><td>max_installations terpakai semua</td></tr>
+        <tr><td><code>OFFLINE_TOKEN_DISABLED</code></td><td>409</td><td>Offline token tidak diizinkan untuk license ini</td></tr>
+        <tr><td><code>NONCE_REPLAYED</code></td><td>409</td><td>Nonce sudah dipakai (replay attack protection)</td></tr>
+        <tr><td><code>TIMESTAMP_EXPIRED</code></td><td>422</td><td>Request timestamp di luar window ±60 detik</td></tr>
+        <tr><td><code>APP_NOT_LICENSED</code></td><td>403</td><td>App code tidak termasuk dalam lisensi</td></tr>
+        <tr><td><code>VALIDATION_FAILED</code></td><td>422</td><td>Request payload invalid (lihat details)</td></tr>
+        <tr><td><code>LICENSE_REQUIRED</code></td><td>402</td><td>Belum aktivasi (dari middleware client)</td></tr>
+        <tr><td><code>LICENSE_LOCKOUT</code></td><td>402</td><td>Heartbeat gagal melewati warning_days</td></tr>
+        <tr><td><code>SIGNING_FAILED</code></td><td>500</td><td>Server gagal sign payload (private key issue)</td></tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <p style="color:var(--muted);font-size:.85rem;text-align:center;margin-top:3rem;">
+      Panduan ini ter-update otomatis seiring evolusi sistem.<br>
+      Untuk pertanyaan / bantuan, kontak: <strong>support@gemilangteknologi.com</strong>
+    </p>
+
+  </main>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── Scroll-spy: highlight active sidebar link based on visible section ──
+  const sidebar  = document.querySelector('.sidebar nav');
+  const links    = Array.from(sidebar.querySelectorAll('a[href^="#"]'));
+  const sections = links
+    .map(link => {
+      const id = link.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      return el ? { id, link, el } : null;
+    })
+    .filter(Boolean);
+
+  if (sections.length === 0) return;
+
+  let currentActive = null;
+
+  function setActive(target) {
+    if (currentActive === target) return;
+    links.forEach(l => l.classList.remove('active'));
+    if (target) {
+      target.link.classList.add('active');
+      // Scroll sidebar to keep active item visible
+      const linkRect    = target.link.getBoundingClientRect();
+      const sidebarRect = sidebar.getBoundingClientRect();
+      if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+        target.link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+    currentActive = target;
+  }
+
+  function update() {
+    // Pick the section whose top is closest above the viewport's anchor line
+    // (anchor = 120px below viewport top — accounts for header / breathing room)
+    const anchor = 120;
+    let best = null;
+
+    for (const s of sections) {
+      const top = s.el.getBoundingClientRect().top;
+      if (top - anchor <= 0) {
+        // candidate — section header has crossed the anchor
+        if (!best || top > best.top) {
+          best = { ...s, top };
+        }
+      }
+    }
+
+    // If nothing crossed yet (we're at very top of doc), use first section
+    if (!best && sections.length > 0) {
+      const firstTop = sections[0].el.getBoundingClientRect().top;
+      if (firstTop < window.innerHeight) best = sections[0];
+    }
+
+    setActive(best);
+  }
+
+  // ── Smooth scroll for sidebar links ──
+  links.forEach(link => {
+    link.addEventListener('click', (e) => {
+      const id = link.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (!el) return;
+      e.preventDefault();
+      window.scrollTo({
+        top: el.offsetTop - 24,
+        behavior: 'smooth'
+      });
+      // Update URL hash without jump
+      history.pushState(null, '', '#' + id);
+      // Force active update after scroll settles
+      setTimeout(update, 350);
+    });
+  });
+
+  // ── Throttled scroll listener ──
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        update();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
+
+  // ── Initial state ──
+  // If URL has hash, jump to it (browser default), else update normally
+  if (window.location.hash) {
+    const target = document.getElementById(window.location.hash.slice(1));
+    if (target) {
+      // small delay so layout is ready
+      setTimeout(() => {
+        window.scrollTo({ top: target.offsetTop - 24, behavior: 'auto' });
+        update();
+      }, 50);
+    }
+  } else {
+    update();
+  }
+})();
+</script>
+</body>
+</html>
