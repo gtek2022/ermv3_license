@@ -36,5 +36,15 @@ class AppServiceProvider extends ServiceProvider
 
         // Share Hashids helper to all views so blade can call Hashids::encode()
         \Illuminate\Support\Facades\View::share('Hashids', app(\Vinkla\Hashids\Facades\Hashids::class));
+
+        // ── Bridge package licensing events → our LicenseInstallation table ──
+        \Illuminate\Support\Facades\Event::listen(
+            \LucaLongo\Licensing\Events\UsageRegistered::class,
+            [\App\Listeners\SyncUsageToInstallation::class, 'handleRegistered']
+        );
+        \Illuminate\Support\Facades\Event::listen(
+            \LucaLongo\Licensing\Events\UsageRevoked::class,
+            [\App\Listeners\SyncUsageToInstallation::class, 'handleRevoked']
+        );
     }
 }

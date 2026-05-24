@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {{-- Active license usages — manage installation slots --}}
 <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-header">
-        <span class="card-title">Active Installation Slots ({{ $activeUsages->count() }} / {{ $license->max_installations }})</span>
+        <span class="card-title">Installation Slots ({{ $activeUsages->count() }} / {{ $license->max_installations }})</span>
         @if($activeUsages->count() > 0)
         <form method="POST" action="{{ route('license.companies.revoke-all-usages', $hash) }}"
               onsubmit="return confirm('Revoke SEMUA {{ $activeUsages->count() }} usage aktif? Semua client ERMv3 akan kehilangan akses dan harus aktivasi ulang.');"
@@ -466,48 +466,92 @@ document.addEventListener('DOMContentLoaded', function() {
         </form>
         @endif
     </div>
-    <div class="card-body" style="padding:0;">
+    <div class="card-body" style="padding:1rem;">
         @if($activeUsages->count() === 0)
-        <div style="text-align:center;color:#94a3b8;padding:2rem;font-size:.82rem;">
-            Belum ada usage aktif. Slot kosong — client bisa aktivasi.
+        <div style="text-align:center;color:#94a3b8;padding:1.5rem;font-size:.82rem;">
+            Belum ada instalasi aktif. Slot kosong — client bisa aktivasi.
         </div>
         @else
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Fingerprint</th>
-                        <th>Registered</th>
-                        <th>Last Seen</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($activeUsages as $u)
-                    <tr>
-                        <td style="font-family:monospace;font-size:.72rem;">
-                            <span style="color:#1a3a6b;font-weight:600;">{{ substr($u->usage_fingerprint, 0, 24) }}</span>…
-                        </td>
-                        <td style="font-size:.78rem;color:#64748b;">
-                            {{ $u->registered_at?->format('d M Y H:i') ?? '—' }}
-                        </td>
-                        <td style="font-size:.78rem;color:#64748b;">
-                            {{ $u->last_seen_at?->diffForHumans() ?? '—' }}
-                        </td>
-                        <td>
-                            <form method="POST" action="{{ route('license.companies.usage.revoke', [$hash, $u->id]) }}"
-                                  onsubmit="return confirm('Revoke usage ini? Client dengan fingerprint {{ substr($u->usage_fingerprint, 0, 16) }}… akan kehilangan akses dan harus aktivasi ulang.');"
-                                  style="margin:0;">
-                                @csrf
-                                <button type="submit" class="btn btn-warning btn-sm" style="font-size:.7rem;">
-                                    Revoke
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(380px, 1fr));gap:1rem;">
+            @foreach($activeUsages as $u)
+            @php
+                $rawMeta = $u->meta;
+                if ($rawMeta instanceof \Illuminate\Database\Eloquent\Casts\ArrayObject) {
+                    $m = $rawMeta->toArray();
+                } elseif (is_array($rawMeta)) {
+                    $m = $rawMeta;
+                } elseif (is_string($rawMeta) && $rawMeta !== '') {
+                    $m = json_decode($rawMeta, true) ?: [];
+                } else {
+                    $m = [];
+                }
+                // Match installation row for app_version etc.
+                $inst = \App\Models\LicenseInstallation::where('license_company_id', $license->id)
+                    ->where('fingerprint', $u->usage_fingerprint)
+                    ->first();
+            @endphp
+            <div style="border:1.5px solid #e2e8f0;border-radius:10px;padding:.85rem 1rem;background:#fff;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.65rem;padding-bottom:.5rem;border-bottom:1px solid #f1f5f9;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;color:#1a3a6b;font-size:.85rem;">
+                            {{ $u->name ?? $m['hostname'] ?? 'Unknown host' }}
+                        </div>
+                        @if(! empty($m['domain']))
+                        <div style="font-size:.7rem;color:#64748b;font-family:monospace;">{{ $m['domain'] }}</div>
+                        @endif
+                    </div>
+                    <span class="badge badge-success" style="font-size:.6rem;flex-shrink:0;">{{ $u->status->value ?? $u->status }}</span>
+                </div>
+
+                <div style="font-size:.7rem;line-height:1.7;color:#475569;">
+                    @php
+                        $rows = [
+                            ['App',          $u->client_type ?? $m['app'] ?? '—'],
+                            ['App Version',  $m['app_version'] ?? '—'],
+                            ['OS',           ($m['os'] ?? '—') . (isset($m['os_release']) ? ' '.$m['os_release'] : '')],
+                            ['PHP',          $m['php_version'] ?? '—'],
+                            ['Hostname',     $m['hostname'] ?? '—'],
+                            ['Machine ID',   isset($m['machine_id']) && $m['machine_id'] ? $m['machine_id'] : '—'],
+                            ['MAC Address',  isset($m['mac_address']) && $m['mac_address'] ? $m['mac_address'] : '—'],
+                            ['Server IP',    $m['server_ip'] ?? ($u->ip ?? '—')],
+                            ['Domain',       $m['domain'] ?? '—'],
+                            ['Timezone',     $m['timezone'] ?? '—'],
+                        ];
+                    @endphp
+                    @foreach($rows as [$label, $val])
+                    <div style="display:flex;gap:.5rem;padding:.15rem 0;">
+                        <span style="color:#94a3b8;width:100px;flex-shrink:0;font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;">{{ $label }}</span>
+                        <span style="font-family:monospace;color:#1e293b;word-break:break-all;font-size:.7rem;">{{ $val }}</span>
+                    </div>
                     @endforeach
-                </tbody>
-            </table>
+
+                    <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed #e2e8f0;">
+                        <div style="display:flex;gap:.5rem;padding:.15rem 0;">
+                            <span style="color:#94a3b8;width:100px;flex-shrink:0;font-size:.65rem;text-transform:uppercase;">Fingerprint</span>
+                            <span style="font-family:monospace;color:#1e293b;word-break:break-all;font-size:.65rem;">{{ $u->usage_fingerprint }}</span>
+                        </div>
+                        <div style="display:flex;gap:.5rem;padding:.15rem 0;">
+                            <span style="color:#94a3b8;width:100px;flex-shrink:0;font-size:.65rem;text-transform:uppercase;">User Agent</span>
+                            <span style="font-family:monospace;color:#1e293b;word-break:break-all;font-size:.65rem;">{{ $u->user_agent ?? '—' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.65rem;padding-top:.5rem;border-top:1px solid #f1f5f9;font-size:.65rem;color:#94a3b8;">
+                    <div>
+                        Aktif sejak <strong style="color:#475569;">{{ $u->registered_at?->format('d M Y H:i') ?? '—' }}</strong>
+                        <br>
+                        Last seen <strong style="color:#475569;">{{ $u->last_seen_at?->diffForHumans() ?? '—' }}</strong>
+                    </div>
+                    <form method="POST" action="{{ route('license.companies.usage.revoke', [$hash, $u->id]) }}"
+                          onsubmit="return confirm('Revoke usage di {{ $m['hostname'] ?? $u->usage_fingerprint }}? Client harus aktivasi ulang.');"
+                          style="margin:0;">
+                        @csrf
+                        <button type="submit" class="btn btn-warning btn-sm" style="font-size:.65rem;">Revoke</button>
+                    </form>
+                </div>
+            </div>
+            @endforeach
         </div>
         @endif
     </div>
