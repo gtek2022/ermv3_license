@@ -6,21 +6,32 @@ use App\Http\Controllers\Api\LicensePolicyController;
 use Illuminate\Support\Facades\Route;
 
 /*
- | Custom API routes for gemilang.
- | The laravel-licensing package auto-registers its own routes under
- | api/licensing/v1 via LicensingServiceProvider.
+ |--------------------------------------------------------------------------
+ | API Routes
+ |--------------------------------------------------------------------------
+ | Laravel 12's bootstrap/app.php (withRouting) already prefixes all routes
+ | in this file with `api/`, so we MUST NOT prefix routes here with `api/`
+ | again — otherwise URLs become /api/api/platform/v1/... which 404s.
+ |
+ | Final URLs:
+ |   POST  /api/licensing/v1/policy
+ |   GET   /api/platform/v1/public-key
+ |   POST  /api/platform/v1/config-sync
+ |   POST  /api/platform/v1/feature/{activate|deactivate|status}
+ |
+ | The masterix21/laravel-licensing package self-registers routes under
+ | /api/licensing/v1/* (activate, refresh, heartbeat, validate, etc).
  */
 
-Route::prefix('api/licensing/v1')
-    ->middleware(['api', 'throttle:api'])
+Route::prefix('licensing/v1')
+    ->middleware('throttle:api')
     ->group(function () {
-        // Heartbeat enforcement policy (tolerance + warning_days) per license
         Route::post('policy', [LicensePolicyController::class, 'show'])
             ->name('licensing.policy');
     });
 
-Route::prefix('api/platform/v1')
-    ->middleware(['api', 'throttle:api'])
+Route::prefix('platform/v1')
+    ->middleware('throttle:api')
     ->group(function () {
         // Public key endpoint — no auth, used by client apps during install
         Route::get('public-key', [\App\Http\Controllers\Api\PublicKeyController::class, 'show'])
