@@ -491,11 +491,12 @@
             background: #fff;
             border-radius: 16px;
             width: 100%;
-            max-width: 420px;
+            max-width: 480px;
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0,0,0,.25);
             animation: gModalIn .18s cubic-bezier(.22,1,.36,1) both;
         }
+        .g-modal.wide { max-width: 600px; }
         @keyframes gModalIn {
             from { opacity:0; transform:translateY(12px) scale(.97); }
             to   { opacity:1; transform:translateY(0) scale(1); }

@@ -163,13 +163,13 @@ window.__showLicenseKeyModal = function(key, isNew) {
 
     var msg =
         '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.85rem 1rem;margin:.5rem 0;">'
-      +   '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em;">Kunci Lisensi Aplikasi</div>'
-      +   '<div style="display:flex;align-items:center;gap:.5rem;">'
-      +     '<code id="__licKeyText" style="flex:1;font-family:monospace;font-size:1rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;background:#fff;padding:.5rem .65rem;border-radius:6px;border:1.5px dashed #86efac;cursor:text;user-select:all;">'
+      +   '<div style="font-size:.68rem;color:#166534;font-weight:700;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em;">Kunci Lisensi Aplikasi</div>'
+      +   '<div style="display:flex;align-items:stretch;gap:.5rem;">'
+      +     '<code id="__licKeyText" style="flex:1;font-family:monospace;font-size:.95rem;color:#1a3a6b;font-weight:800;letter-spacing:.04em;background:#fff;padding:.55rem .7rem;border-radius:6px;border:1.5px dashed #86efac;cursor:text;user-select:all;display:flex;align-items:center;justify-content:center;text-align:center;min-width:0;overflow-x:auto;white-space:nowrap;">'
       +       __escapeHtml(key)
       +     '</code>'
       +     '<button type="button" id="__licCopyBtn" '
-      +       'style="background:#16a34a;color:#fff;border:none;padding:.5rem .8rem;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">'
+      +       'style="background:#16a34a;color:#fff;border:none;padding:.55rem .9rem;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">'
       +       'Copy'
       +     '</button>'
       +   '</div>'
