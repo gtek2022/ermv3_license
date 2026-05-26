@@ -124,6 +124,12 @@ Route::middleware(['auth'])->group(function () {
     // ── System: Heartbeat & Cron Setup Wizard ─────────────────────────────────
     Route::get('/system/heartbeat-setup', [\App\Http\Controllers\HeartbeatSetupController::class, 'show'])
         ->name('system.heartbeat-setup');
+    Route::get('/system/heartbeat-setup/status', [\App\Http\Controllers\HeartbeatSetupController::class, 'status'])
+        ->name('system.heartbeat-setup.status');
+    Route::post('/system/heartbeat-setup/install', [\App\Http\Controllers\HeartbeatSetupController::class, 'installCron'])
+        ->name('system.heartbeat-setup.install');
+    Route::post('/system/heartbeat-setup/uninstall', [\App\Http\Controllers\HeartbeatSetupController::class, 'uninstallCron'])
+        ->name('system.heartbeat-setup.uninstall');
     Route::post('/system/heartbeat-setup/test', [\App\Http\Controllers\HeartbeatSetupController::class, 'test'])
         ->name('system.heartbeat-setup.test');
 

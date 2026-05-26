@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        // Tick file every minute → admin UI confirms cron is alive
+        $schedule->command('cron:tick')->everyMinute()->withoutOverlapping();
         // Purge expired nonces every 10 minutes
         $schedule->call(fn () => \App\Models\LicenseNonce::purgeExpired())->everyTenMinutes();
         // Sync public key to master_configs daily (after key rotation)

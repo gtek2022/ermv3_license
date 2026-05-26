@@ -2,101 +2,74 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Services\Licensing\CronManager;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\View\View;
-use Symfony\Component\Process\Process;
 
 /**
- * Setup wizard for Gemilang admin to verify and configure cron / heartbeat
- * scheduling, and to provide one-click copy snippets for the client side.
- *
- * The page detects:
- *   - Whether Laravel scheduler is running on the gemilang server itself
- *     (used by `licensing:check-expirations` etc.)
- *   - Generates the exact crontab line for client servers (ERMv3)
+ * Setup wizard for Gemilang admin — multi-purpose monitor for cron health
+ * and one-click installer (auto-detects aaPanel / cron.d / user crontab).
  */
 class HeartbeatSetupController extends Controller
 {
-    public function show(): View
+    public function show(CronManager $cron): View
     {
-        $appPath = base_path();
-        $phpBin  = PHP_BINARY;
-
-        // The cron line client (ERMv3) servers should add
-        $clientCronLine = "* * * * * cd <APP_PATH> && {$phpBin} artisan schedule:run >> /dev/null 2>&1";
-        $genericCronLine = '* * * * * cd /www/wwwroot/erm.client.com && php artisan schedule:run >> /dev/null 2>&1';
-
-        // Local checks (gemilang server)
-        $checks = [
-            'php_cli' => [
-                'label' => 'PHP CLI tersedia',
-                'value' => trim(shell_exec(escapeshellcmd($phpBin) . ' --version 2>&1') ?: ''),
-                'ok'    => is_executable($phpBin),
-            ],
-            'app_path' => [
-                'label' => 'Path aplikasi',
-                'value' => $appPath,
-                'ok'    => is_dir($appPath),
-            ],
-            'crontab_cmd' => [
-                'label' => 'Command crontab',
-                'value' => trim(shell_exec('which crontab 2>&1') ?: 'tidak terdeteksi'),
-                'ok'    => ! empty(trim(shell_exec('which crontab 2>&1') ?: '')),
-            ],
-            'storage_writable' => [
-                'label' => 'storage/ writable',
-                'value' => is_writable(storage_path()) ? storage_path() : '✗ tidak writable',
-                'ok'    => is_writable(storage_path()),
-            ],
-        ];
-
-        // Laravel scheduler list
-        $scheduledCommands = [];
-        try {
-            $output = Artisan::call('schedule:list');
-            $scheduledCommands = explode("\n", trim(Artisan::output()));
-        } catch (\Throwable $e) {
-            $scheduledCommands = ['Error: ' . $e->getMessage()];
-        }
-
-        // Last cron run hint — file written by a tiny watch task
-        $lastRunFile = storage_path('app/.cron-last-run');
-        $lastRun = null;
-        if (is_file($lastRunFile)) {
-            $lastRun = \Carbon\Carbon::createFromTimestamp(filemtime($lastRunFile));
-        }
-
         return view('system.heartbeat-setup', [
-            'checks'             => $checks,
-            'phpBin'             => $phpBin,
-            'appPath'            => $appPath,
-            'clientCronLine'     => $clientCronLine,
-            'genericCronLine'    => $genericCronLine,
-            'scheduledCommands'  => $scheduledCommands,
-            'lastRun'            => $lastRun,
-            'serverCronLine'     => "* * * * * cd {$appPath} && {$phpBin} artisan schedule:run >> /dev/null 2>&1",
+            'capabilities'      => $cron->detectCapabilities(),
+            'existingEntry'     => $cron->detectExistingEntry(),
+            'tickFreshness'     => $cron->tickFreshness(),
+            'cronLine'          => $cron->cronLine(),
+            'scheduledCommands' => $this->getSchedules(),
+            'clientCronExample' => '* * * * * cd /www/wwwroot/erm.client.com && php artisan schedule:run >> /dev/null 2>&1',
         ]);
     }
 
-    /**
-     * Run a quick scheduler test — invoke the test marker command.
-     */
-    public function test(): \Illuminate\Http\JsonResponse
+    public function status(CronManager $cron): JsonResponse
     {
-        try {
-            // Touch the last-run file so we have a concrete signal scheduler ran
-            $file = storage_path('app/.cron-last-run');
-            file_put_contents($file, now()->toIso8601String());
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'tick'           => $cron->tickFreshness(),
+                'existing_entry' => $cron->detectExistingEntry(),
+                'now'            => now()->toIso8601String(),
+            ],
+        ]);
+    }
 
-            // Try to run schedule:run manually
-            Artisan::call('schedule:run');
-            $output = Artisan::output();
-
+    public function installCron(CronManager $cron): JsonResponse
+    {
+        $existing = $cron->detectExistingEntry();
+        if ($existing) {
             return response()->json([
                 'success' => true,
-                'message' => 'Scheduler berjalan ✓',
-                'output'  => $output,
+                'mode'    => $existing['mode'],
+                'message' => 'Cron entry sudah terpasang.',
+                'detail'  => $existing,
+            ]);
+        }
+
+        $result = $cron->autoInstall();
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    public function uninstallCron(CronManager $cron): JsonResponse
+    {
+        $result = $cron->uninstall();
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    public function test(CronManager $cron): JsonResponse
+    {
+        try {
+            Artisan::call('schedule:run');
+            $output = Artisan::output();
+            $cron->recordTick();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Scheduler dijalankan ✓',
+                'output'   => $output,
                 'last_run' => now()->toDateTimeString(),
             ]);
         } catch (\Throwable $e) {
@@ -104,6 +77,16 @@ class HeartbeatSetupController extends Controller
                 'success' => false,
                 'message' => 'Scheduler error: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    protected function getSchedules(): array
+    {
+        try {
+            Artisan::call('schedule:list');
+            return array_filter(explode("\n", trim(Artisan::output())));
+        } catch (\Throwable $e) {
+            return ['Error: ' . $e->getMessage()];
         }
     }
 }

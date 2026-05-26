@@ -1321,15 +1321,24 @@ public function someMethod(LicenseStateStore $store) {
     <h3>1. Backend Scheduler Setup</h3>
 
     <div class="callout callout-success">
-      <div class="callout-title">⚡ Setup Wizard Tersedia</div>
+      <div class="callout-title">⚡ One-Click Cron Installer + Live Monitor</div>
       <ul style="margin-bottom:0;">
-        <li><strong>Sisi Gemilang admin</strong>: <code>https://license.gemilangteknologi.com/system/heartbeat-setup</code> — sidebar menu "Setup Heartbeat" — generate snippet cron + test scheduler + copy instruksi untuk dikirim ke client</li>
-        <li><strong>Sisi ERMv3 client</strong>: <code>https://erm.client.com/license/setup</code> — verifikasi cron, koneksi gemilang, system requirements, test heartbeat one-click</li>
+        <li><strong>Sisi Gemilang admin</strong>: <code>https://license.gemilangteknologi.com/system/heartbeat-setup</code> — sidebar menu "Setup Heartbeat"</li>
+        <li><strong>Sisi ERMv3 client</strong>: <code>https://erm.client.com/license/setup</code> — accessible pre-activation</li>
       </ul>
-      Wizard ini auto-detect status dan kasih tombol copy-paste — IT team client tidak perlu baca dokumentasi panjang.
+      <p style="margin-top:.5rem;margin-bottom:0;">Kedua halaman:
+      <ul style="margin-top:.25rem;margin-bottom:0;">
+        <li><strong>Auto-detect</strong> aaPanel / Ubuntu / cron.d / user crontab — otomatis pilih mode terbaik</li>
+        <li><strong>Tombol "Install Cron Otomatis"</strong> — satu klik, cron langsung terpasang. Tidak perlu SSH manual</li>
+        <li><strong>Live monitor</strong> — banner indikator di atas halaman, update tiap 30 detik (healthy / stale / broken / never)</li>
+        <li><strong>Detect existing entry</strong> — tahu kalau cron sudah terpasang sebelumnya, kasih tombol Uninstall</li>
+        <li><strong>Manual fallback</strong> — kalau privilege tidak cukup, kasih snippet copy-paste lengkap</li>
+      </ul>
+      </p>
     </div>
 
-    <p>Heartbeat dijadwalkan via Laravel scheduler. Pastikan cron Laravel aktif di server:</p>
+    <h4>Kalau Auto-Install Tidak Bisa (Privilege Tidak Cukup)</h4>
+    <p>Untuk kasus seperti shared hosting tanpa root atau tanpa aaPanel, fallback ke instruksi manual:</p>
 
     <pre><code># Edit crontab system
 crontab -e
