@@ -46,5 +46,19 @@ class AppServiceProvider extends ServiceProvider
             \LucaLongo\Licensing\Events\UsageRevoked::class,
             [\App\Listeners\SyncUsageToInstallation::class, 'handleRevoked']
         );
+
+        // The package does NOT fire a dedicated heartbeat event — it only calls
+        // $usage->update(['last_seen_at' => now()]). We listen to Eloquent's
+        // "updated" hook on LicenseUsage so the same listener can mirror it
+        // onto our LicenseInstallation row + heartbeat log table.
+        \LucaLongo\Licensing\Models\LicenseUsage::updated(function ($usage) {
+            try {
+                app(\App\Listeners\SyncUsageToInstallation::class)->handleHeartbeat($usage);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning(
+                    '[SyncUsageToInstallation] Heartbeat sync failed: ' . $e->getMessage()
+                );
+            }
+        });
     }
 }
