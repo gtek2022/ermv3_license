@@ -62,19 +62,72 @@
             <a href="{{ route('license.installations.index') }}" class="btn btn-secondary btn-sm">View All</a>
         </div>
         <div class="card-body" style="padding:0;">
+            @php
+                $intervalMin = (int) round(($heartbeatInterval ?? 3600) / 60);
+                $intervalLabel = $intervalMin >= 60
+                    ? round($intervalMin / 60, 1) . ' jam'
+                    : $intervalMin . ' menit';
+            @endphp
+            <div style="padding:.6rem 1rem;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:.72rem;color:#64748b;">
+                Heartbeat interval: <strong>{{ $intervalLabel }}</strong>
+                — countdown menunjukkan waktu sampai heartbeat berikutnya yang diharapkan.
+            </div>
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>Host</th><th>App</th><th>Last Seen</th><th>Status</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Host</th>
+                            <th>App</th>
+                            <th>Last Seen</th>
+                            <th>Next Expected</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         @forelse($recentHeartbeats as $inst)
-                        <tr>
+                        @php
+                            $secs = $inst->seconds_until_next;
+                            $isStale = $inst->is_stale ?? false;
+                            // Format countdown for human display
+                            if ($secs === null) {
+                                $countdownText = '—';
+                                $countdownColor = '#94a3b8';
+                            } elseif ($secs > 0) {
+                                $mins = (int) round($secs / 60);
+                                $countdownText = $mins >= 60
+                                    ? 'in ' . round($mins / 60, 1) . ' jam'
+                                    : 'in ' . $mins . ' menit';
+                                $countdownColor = '#16a34a';
+                            } elseif ($isStale) {
+                                $countdownText = 'overdue ' . abs((int) round($secs / 60)) . ' menit';
+                                $countdownColor = '#dc2626';
+                            } else {
+                                $countdownText = 'due now';
+                                $countdownColor = '#d97706';
+                            }
+                        @endphp
+                        <tr @if($isStale) style="background:#fef2f2;" @endif>
                             <td style="font-size:.75rem;">{{ $inst->hostname ?? $inst->domain ?? '—' }}</td>
                             <td><span class="badge badge-info">{{ $inst->app_code }}</span></td>
                             <td style="font-size:.72rem;color:#64748b;">{{ $inst->last_heartbeat_at?->diffForHumans() ?? '—' }}</td>
-                            <td><span class="badge {{ $inst->status === 'active' ? 'badge-success' : 'badge-danger' }}">{{ $inst->status }}</span></td>
+                            <td
+                                class="hb-countdown"
+                                data-next="{{ $inst->next_expected_at?->toIso8601String() }}"
+                                data-interval="{{ $heartbeatInterval ?? 3600 }}"
+                                style="font-size:.72rem;color:{{ $countdownColor }};font-weight:500;font-family:ui-monospace,monospace;"
+                            >
+                                {{ $countdownText }}
+                            </td>
+                            <td>
+                                @if($isStale)
+                                    <span class="badge badge-danger">stale</span>
+                                @else
+                                    <span class="badge {{ $inst->status === 'active' ? 'badge-success' : 'badge-danger' }}">{{ $inst->status }}</span>
+                                @endif
+                            </td>
                         </tr>
                         @empty
-                        <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.5rem;">No heartbeats yet.</td></tr>
+                        <tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem;">No heartbeats yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -138,4 +191,45 @@
     </div>
 </div>
 @endif
+
+{{-- Live countdown ticker for heartbeats — updates every second --}}
+<script>
+(function () {
+    const cells = document.querySelectorAll('.hb-countdown');
+    if (cells.length === 0) return;
+
+    function fmt(secs) {
+        const abs = Math.abs(secs);
+        if (abs < 60)   return secs + 's';
+        if (abs < 3600) return Math.round(secs / 60) + 'm';
+        return (secs / 3600).toFixed(1) + 'h';
+    }
+
+    function tick() {
+        const now = Date.now();
+        cells.forEach(cell => {
+            const next     = cell.dataset.next ? Date.parse(cell.dataset.next) : null;
+            const interval = parseInt(cell.dataset.interval || '3600', 10);
+            if (! next || isNaN(next)) return;
+
+            const diffSec = Math.floor((next - now) / 1000);
+            const stale   = diffSec < -(interval * 0.5);
+
+            if (diffSec > 0) {
+                cell.textContent = 'in ' + fmt(diffSec);
+                cell.style.color = '#16a34a';
+            } else if (stale) {
+                cell.textContent = 'overdue ' + fmt(diffSec).replace('-', '');
+                cell.style.color = '#dc2626';
+            } else {
+                cell.textContent = 'due now';
+                cell.style.color = '#d97706';
+            }
+        });
+    }
+
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
 @endsection

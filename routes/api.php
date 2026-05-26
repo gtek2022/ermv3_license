@@ -41,6 +41,10 @@ Route::prefix('platform/v1')
         // avoid hardcoding heartbeat interval / grace / timeout in their .env.
         Route::get('client-config', [\App\Http\Controllers\Api\ClientConfigController::class, 'show'])
             ->name('platform.client-config');
+        // Lightweight version hash — client polls every minute and refetches
+        // full config only when this hash changes.
+        Route::get('client-config/version', [\App\Http\Controllers\Api\ClientConfigController::class, 'version'])
+            ->name('platform.client-config.version');
 
         // Config sync — ERMv3 fetches signed configs, feature flags, enforcement policy
         Route::post('config-sync', [ConfigSyncController::class, 'sync'])

@@ -6,6 +6,7 @@ use App\Models\LicenseCompany;
 use App\Models\LicenseInstallation;
 use App\Models\LicenseLogsSuspicious;
 use App\Models\MasterCompany;
+use App\Models\MasterConfig;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -22,11 +23,31 @@ class DashboardController extends Controller
             'unreviewed_suspicious'=> LicenseLogsSuspicious::where('is_reviewed', false)->count(),
         ];
 
-        // Recent heartbeats — last 10 installations by last_heartbeat_at
+        // Heartbeat interval (config-driven) so dashboard can compute countdown
+        $heartbeatInterval = (int) MasterConfig::get('licensing.heartbeat_interval', 3600);
+
+        // Recent heartbeats — last 8 installations by last_heartbeat_at, with
+        // computed countdown to next expected heartbeat (last + interval).
         $recentHeartbeats = LicenseInstallation::whereNotNull('last_heartbeat_at')
             ->orderByDesc('last_heartbeat_at')
             ->limit(8)
-            ->get();
+            ->get()
+            ->map(function ($inst) use ($heartbeatInterval) {
+                $nextExpected = $inst->last_heartbeat_at?->copy()->addSeconds($heartbeatInterval);
+                $secondsUntilNext = $nextExpected
+                    ? (int) now()->diffInSeconds($nextExpected, false)
+                    : null;
+
+                // Stale = lewat interval + 50% buffer (e.g. 1.5 jam untuk interval 1 jam)
+                $isStale = $secondsUntilNext !== null
+                    && $secondsUntilNext < -((int) ($heartbeatInterval * 0.5));
+
+                $inst->next_expected_at  = $nextExpected;
+                $inst->seconds_until_next = $secondsUntilNext;
+                $inst->is_stale           = $isStale;
+
+                return $inst;
+            });
 
         // Unreviewed suspicious events
         $suspiciousEvents = LicenseLogsSuspicious::where('is_reviewed', false)
@@ -46,7 +67,8 @@ class DashboardController extends Controller
             'stats',
             'recentHeartbeats',
             'suspiciousEvents',
-            'expiringSoon'
+            'expiringSoon',
+            'heartbeatInterval'
         ));
     }
 }
