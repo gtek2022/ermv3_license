@@ -411,6 +411,11 @@ class CronManager
 
     protected function run(array $cmd): ?string
     {
+        // Bail early if proc_open is disabled (security hardening)
+        if (! function_exists('proc_open')) {
+            return null;
+        }
+
         try {
             $process = new Process($cmd);
             $process->setTimeout(8);
@@ -425,6 +430,10 @@ class CronManager
 
     protected function writeUserCrontab(string $content): bool
     {
+        if (! function_exists('proc_open')) {
+            return false;
+        }
+
         try {
             // Pipe content into `crontab -`
             $tmp = tempnam(sys_get_temp_dir(), 'cron-');
