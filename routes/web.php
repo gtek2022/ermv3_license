@@ -121,6 +121,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/system/public-key', [\App\Http\Controllers\Api\PublicKeyController::class, 'show'])
         ->name('system.public-key');
 
+    // ── System: Heartbeat & Cron Setup Wizard ─────────────────────────────────
+    Route::get('/system/heartbeat-setup', [\App\Http\Controllers\HeartbeatSetupController::class, 'show'])
+        ->name('system.heartbeat-setup');
+    Route::post('/system/heartbeat-setup/test', [\App\Http\Controllers\HeartbeatSetupController::class, 'test'])
+        ->name('system.heartbeat-setup.test');
+
     // ── Guide / Documentation ──────────────────────────────────────────────────
     Route::get('/guide/lisensi', [\App\Http\Controllers\GuideController::class, 'show'])
         ->name('guide.lisensi');

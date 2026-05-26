@@ -1320,6 +1320,15 @@ public function someMethod(LicenseStateStore $store) {
 
     <h3>1. Backend Scheduler Setup</h3>
 
+    <div class="callout callout-success">
+      <div class="callout-title">⚡ Setup Wizard Tersedia</div>
+      <ul style="margin-bottom:0;">
+        <li><strong>Sisi Gemilang admin</strong>: <code>https://license.gemilangteknologi.com/system/heartbeat-setup</code> — sidebar menu "Setup Heartbeat" — generate snippet cron + test scheduler + copy instruksi untuk dikirim ke client</li>
+        <li><strong>Sisi ERMv3 client</strong>: <code>https://erm.client.com/license/setup</code> — verifikasi cron, koneksi gemilang, system requirements, test heartbeat one-click</li>
+      </ul>
+      Wizard ini auto-detect status dan kasih tombol copy-paste — IT team client tidak perlu baca dokumentasi panjang.
+    </div>
+
     <p>Heartbeat dijadwalkan via Laravel scheduler. Pastikan cron Laravel aktif di server:</p>
 
     <pre><code># Edit crontab system
