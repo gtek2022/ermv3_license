@@ -259,10 +259,11 @@ class CronManager
         $logFile  = "{$cronFile}.log";
 
         // Create the script that aaPanel runs
+        $php = $this->detectPhpCliBinary();
         $script = "#!/bin/bash\n"
             . "# " . $this->cronMarkerString() . "\n"
             . "# Laravel scheduler for " . config('app.name') . "\n"
-            . "cd " . base_path() . " && " . PHP_BINARY . " artisan schedule:run\n";
+            . "cd " . base_path() . " && " . $php . " artisan schedule:run\n";
 
         if (file_put_contents($cronFile, $script) === false) {
             return ['success' => false, 'mode' => 'aapanel', 'message' => "Gagal write {$cronFile}."];
@@ -357,7 +358,7 @@ class CronManager
 
     public function cronLine(bool $includeUser = false): string
     {
-        $php  = PHP_BINARY;
+        $php  = $this->detectPhpCliBinary();
         $path = base_path();
         $marker = $this->cronMarkerString();
 
@@ -367,6 +368,40 @@ class CronManager
         }
 
         return "* * * * * cd {$path} && {$php} artisan schedule:run >> /dev/null 2>&1  # {$marker}";
+    }
+
+    /**
+     * Resolve the path to the PHP CLI binary.
+     *
+     * Important: in PHP-FPM context, PHP_BINARY points to `php-fpm` (the FPM
+     * daemon binary) which CANNOT run artisan. We need the CLI binary instead.
+     */
+    public function detectPhpCliBinary(): string
+    {
+        if (PHP_SAPI === 'cli' && PHP_BINARY && ! str_contains(PHP_BINARY, 'fpm')) {
+            return PHP_BINARY;
+        }
+
+        if (PHP_BINARY && str_contains(PHP_BINARY, 'fpm')) {
+            $derived = preg_replace('#/sbin/php-fpm$#', '/bin/php', PHP_BINARY);
+            if ($derived && $derived !== PHP_BINARY && is_file($derived) && is_executable($derived)) {
+                return $derived;
+            }
+            if (preg_match('#/www/server/php/(\d+)/#', PHP_BINARY, $m)) {
+                $candidate = "/www/server/php/{$m[1]}/bin/php";
+                if (is_file($candidate) && is_executable($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        foreach (['/usr/bin/php', '/usr/local/bin/php'] as $bin) {
+            if (is_file($bin) && is_executable($bin)) {
+                return $bin;
+            }
+        }
+
+        return 'php';
     }
 
     public function cronBlock(): string
