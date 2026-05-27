@@ -237,6 +237,7 @@ function retrieveFLK(featureId, appHash) {
     .then(data => {
         btn.disabled = false; btn.textContent = 'Lihat Kunci';
         if (data.success) {
+            var appLabel = data.app_name || 'aplikasi client';
             GModal.alert({
                 type: 'info',
                 title: 'Feature License Key (FLK)',
@@ -244,7 +245,7 @@ function retrieveFLK(featureId, appHash) {
                     + '<div style="font-size:.68rem;color:#1e40af;font-weight:700;margin-bottom:.35rem;">Feature License Key:</div>'
                     + '<div style="font-family:monospace;font-size:.9rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
                     + '</div>'
-                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Berikan kunci ini ke client untuk aktivasi fitur di ERMv3.</p>',
+                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Berikan kunci ini ke client untuk aktivasi fitur di <strong>' + appLabel + '</strong>.</p>',
                 confirmText: 'Tutup',
             });
         } else {

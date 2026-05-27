@@ -171,7 +171,7 @@
                 <div style="font-size:.75rem;font-weight:700;color:#991b1b;margin-bottom:.3rem;">Opsi 2 — Generate Kunci Baru</div>
                 <div style="font-size:.72rem;color:#64748b;margin-bottom:.6rem;">
                     Membuat kunci baru. Kunci lama tidak berlaku lagi.
-                    <strong>ERMv3 harus diaktifkan ulang dengan kunci baru.</strong>
+                    <strong>Aplikasi client harus diaktifkan ulang dengan kunci baru.</strong>
                 </div>
                 <a href="{{ route('license.companies.regenerate-confirm', $hash) }}" class="btn btn-danger btn-sm" style="white-space:nowrap;">
                     Generate Kunci Baru
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="card-title">Installation Slots ({{ $activeUsages->count() }} / {{ $license->max_installations }})</span>
         @if($activeUsages->count() > 0)
         <form method="POST" action="{{ route('license.companies.revoke-all-usages', $hash) }}"
-              onsubmit="return confirm('Revoke SEMUA {{ $activeUsages->count() }} usage aktif? Semua client ERMv3 akan kehilangan akses dan harus aktivasi ulang.');"
+              onsubmit="return confirm('Revoke SEMUA {{ $activeUsages->count() }} usage aktif? Semua client akan kehilangan akses dan harus aktivasi ulang.');"
               style="margin:0;">
             @csrf
             <button type="submit" class="btn btn-warning btn-sm">
@@ -690,6 +690,7 @@ window.__retrieveFLKLic = function(featureId, appHash, evt) {
     .then(function(data) {
         if (btn) { btn.disabled = false; btn.textContent = 'Lihat FLK'; }
         if (data.success) {
+            var appLabel = data.app_name || 'aplikasi client';
             GModal.alert({
                 type: 'info',
                 title: 'Feature License Key (FLK)',
@@ -697,7 +698,7 @@ window.__retrieveFLKLic = function(featureId, appHash, evt) {
                     + '<div style="font-size:.68rem;color:#1e40af;font-weight:700;margin-bottom:.35rem;">Feature License Key:</div>'
                     + '<div style="font-family:monospace;font-size:.9rem;color:#1a3a6b;font-weight:800;letter-spacing:.06em;word-break:break-all;">' + data.key + '</div>'
                     + '</div>'
-                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Berikan kunci ini ke client untuk aktivasi fitur di ERMv3.</p>',
+                    + '<p style="font-size:.75rem;color:#64748b;margin-top:.5rem;">Berikan kunci ini ke client untuk aktivasi fitur di <strong>' + appLabel + '</strong>.</p>',
                 confirmText: 'Tutup',
             });
         } else {

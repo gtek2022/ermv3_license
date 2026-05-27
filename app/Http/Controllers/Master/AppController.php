@@ -143,7 +143,7 @@ class AppController extends Controller
 
     public function retrieveFeatureKey(string $hash, int $featureId): \Illuminate\Http\JsonResponse
     {
-        $this->findOrFail($hash);
+        $app = $this->findOrFail($hash);
         $feature = MasterAppFeature::findOrFail($featureId);
 
         if (! $feature->requires_license) {
@@ -159,7 +159,12 @@ class AppController extends Controller
             ], 422);
         }
 
-        return response()->json(['success' => true, 'key' => $key]);
+        return response()->json([
+            'success'  => true,
+            'key'      => $key,
+            'app_name' => $app->name,
+            'app_code' => $app->code,
+        ]);
     }
 
     public function regenerateFeatureKey(string $hash, int $featureId): RedirectResponse

@@ -156,10 +156,10 @@
 
   {{-- ── 2. SNIPPET UNTUK CLIENT ── --}}
   <div class="card" style="border-left: 4px solid var(--success);">
-    <div class="card-header"><span class="card-title">Step 2 — Setup Cron di Server Client (ERMv3)</span></div>
+    <div class="card-header"><span class="card-title">Step 2 — Setup Cron di Server Aplikasi Client</span></div>
     <div class="card-body">
       <p style="font-size:.85rem;margin-bottom:.75rem;">
-        Server client (ERMv3) juga butuh cron untuk heartbeat berkala ke gemilang. Berikan instruksi ini ke
+        Setiap aplikasi client (ERMv3, PDS, dll) juga butuh cron untuk heartbeat berkala ke gemilang. Berikan instruksi ini ke
         IT team client. <strong>Atau lebih mudah</strong>: minta mereka buka URL berikut untuk one-click install:
       </p>
 
@@ -178,7 +178,7 @@
         <code id="clientCron">{{ $clientCronExample }}</code>
         <button onclick="copyCode('clientCron', this)" class="btn btn-primary btn-sm" style="white-space:nowrap;">Copy</button>
       </div>
-      <div style="font-size:.7rem;color:#64748b;">Ganti path sesuai lokasi instalasi ERMv3 di server client.</div>
+      <div style="font-size:.7rem;color:#64748b;">Ganti path sesuai lokasi instalasi aplikasi client di server target.</div>
     </div>
   </div>
 

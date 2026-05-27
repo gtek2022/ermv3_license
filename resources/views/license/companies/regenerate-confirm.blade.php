@@ -21,7 +21,7 @@
                 </div>
                 <ul style="font-size:.78rem;color:#78350f;line-height:1.7;margin-left:1.1rem;">
                     <li>Kunci lisensi lama akan <strong>langsung tidak berlaku</strong>.</li>
-                    <li>Aplikasi ERMv3 yang sudah aktif akan kehilangan akses sampai diaktivasi ulang.</li>
+                    <li>Aplikasi client yang sudah aktif akan kehilangan akses sampai diaktivasi ulang.</li>
                     <li>Anda harus memberikan kunci baru ke client untuk aktivasi ulang.</li>
                     <li>Kunci baru hanya akan ditampilkan satu kali — segera disalin dan disimpan.</li>
                 </ul>

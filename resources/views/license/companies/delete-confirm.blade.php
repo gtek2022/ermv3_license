@@ -22,7 +22,7 @@
                 <ul style="font-size:.78rem;color:#78350f;line-height:1.7;margin-left:1.1rem;">
                     <li>Menandai lisensi sebagai <strong>terhapus (soft delete)</strong> — data masih tersimpan di database tapi tidak aktif lagi.</li>
                     <li>Auto-revoke semua <strong>usage aktif</strong> di package — semua instalasi client akan kehilangan akses.</li>
-                    <li>Client (ERMv3) yang aktif akan <strong>langsung berhenti berfungsi</strong> setelah heartbeat berikutnya.</li>
+                    <li>Client (ERMv3, PDS, dll) yang aktif akan <strong>langsung berhenti berfungsi</strong> setelah heartbeat berikutnya.</li>
                     <li>Tidak bisa di-undelete dari UI — perlu intervensi database.</li>
                 </ul>
             </div>
@@ -82,7 +82,7 @@
                 <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:8px;padding:.75rem;margin-bottom:1rem;">
                     <label style="display:flex;gap:.5rem;align-items:flex-start;cursor:pointer;font-size:.82rem;color:#991b1b;">
                         <input type="checkbox" required style="margin-top:.2rem;flex-shrink:0;">
-                        <span>Saya paham bahwa lisensi <strong>{{ $licenseCompany->label ?? $licenseCompany->company?->name }}</strong> akan di-soft delete dan {{ $activeUsages->count() }} usage aktif akan di-revoke. Client ERMv3 akan kehilangan akses.</span>
+                        <span>Saya paham bahwa lisensi <strong>{{ $licenseCompany->label ?? $licenseCompany->company?->name }}</strong> akan di-soft delete dan {{ $activeUsages->count() }} usage aktif akan di-revoke. Aplikasi client akan kehilangan akses.</span>
                     </label>
                 </div>
 
