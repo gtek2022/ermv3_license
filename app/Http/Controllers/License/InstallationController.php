@@ -128,6 +128,49 @@ class InstallationController extends Controller
         return back()->with('success', "Ignored {$count} suspicious event(s).");
     }
 
+    /**
+     * Bulk-ignore ALL unreviewed suspicious events across all installations.
+     * Triggered from the dashboard "Ignore All" button so admin can clear
+     * orphan events (those with installation_id/license_company_id null,
+     * e.g. invalid-key attempts from random scanners).
+     */
+    public function ignoreAllSuspiciousGlobal(): RedirectResponse
+    {
+        $count = LicenseLogsSuspicious::where('is_reviewed', false)
+            ->update([
+                'is_reviewed' => true,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+        return back()->with('success', "Ignored {$count} suspicious event(s).");
+    }
+
+    /**
+     * Standalone listing page for ALL suspicious events (including orphan
+     * ones not tied to any installation).
+     */
+    public function suspiciousIndex(Request $request): View
+    {
+        $query = LicenseLogsSuspicious::query();
+
+        if ($request->filled('reviewed')) {
+            $query->where('is_reviewed', $request->reviewed === '1');
+        }
+
+        if ($request->filled('event_type')) {
+            $query->where('event_type', $request->event_type);
+        }
+
+        if ($request->filled('severity')) {
+            $query->where('severity', $request->severity);
+        }
+
+        $events = $query->orderByDesc('occurred_at')->paginate(50);
+
+        return view('license.installations.suspicious-index', compact('events'));
+    }
+
     private function findOrFail(string $hash): LicenseInstallation
     {
         $ids = Hashids::decode($hash);

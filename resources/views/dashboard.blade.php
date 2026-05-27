@@ -419,9 +419,20 @@
             Suspicious Events
         </h3>
         <div class="card" style="border-color:#fecaca;">
-            <div class="card-header" style="background:#fef2f2;">
+            <div class="card-header" style="background:#fef2f2;gap:.4rem;">
                 <span class="card-title" style="color:#991b1b;">Unreviewed</span>
-                <a href="{{ route('license.installations.index') }}" class="btn btn-danger btn-sm">Review</a>
+                <div style="display:flex;gap:.4rem;">
+                    <a href="{{ route('license.installations.suspicious.index') }}" class="btn btn-secondary btn-sm">View All</a>
+                    <form method="POST" action="{{ route('license.installations.suspicious.ignore-all-global') }}"
+                          data-confirm="Tandai SEMUA suspicious event yang belum ditinjau sebagai reviewed? Card merah ini akan hilang. Data tetap tersimpan untuk audit."
+                          data-confirm-type="info"
+                          data-confirm-title="Ignore All Suspicious"
+                          data-confirm-ok="Ya, Ignore Semua"
+                          style="margin:0;">
+                        @csrf
+                        <button class="btn btn-danger btn-sm" type="submit">Ignore All</button>
+                    </form>
+                </div>
             </div>
             <div class="card-body" style="padding:0;">
                 <div class="table-wrap">

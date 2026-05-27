@@ -101,6 +101,8 @@ Route::middleware(['auth'])->group(function () {
     // ── License: Installations ────────────────────────────────────────────────
     Route::prefix('installations')->name('license.installations.')->group(function () {
         Route::get('/', [InstallationController::class, 'index'])->name('index');
+        Route::get('/suspicious', [InstallationController::class, 'suspiciousIndex'])->name('suspicious.index');
+        Route::post('/suspicious/ignore-all-global', [InstallationController::class, 'ignoreAllSuspiciousGlobal'])->name('suspicious.ignore-all-global');
         Route::get('/{hash}', [InstallationController::class, 'show'])->name('show');
         Route::post('/{hash}/revoke', [InstallationController::class, 'revoke'])->name('revoke');
         Route::post('/{hash}/blacklist', [InstallationController::class, 'blacklist'])->name('blacklist');
