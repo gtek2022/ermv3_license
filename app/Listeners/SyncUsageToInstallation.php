@@ -158,6 +158,18 @@ class SyncUsageToInstallation
                 'status'            => $installation->status === 'revoked' ? 'revoked' : 'active',
             ];
 
+            // Kalau app_code berubah (migrasi env, e.g. pds → pds-dev), ikut sync
+            // ke installation row + license_app_id supaya dashboard akurat.
+            if ($appCode && $appCode !== $installation->app_code) {
+                $updates['app_code'] = $appCode;
+                $newLa = LicenseApp::where('license_company_id', $licenseCompany->id)
+                    ->where('app_code', $appCode)
+                    ->first();
+                if ($newLa) {
+                    $updates['license_app_id'] = $newLa->id;
+                }
+            }
+
             // Hanya update kalau client kirim data fresh (jangan timpa null kalau
             // heartbeat tanpa metadata seperti dari endpoint legacy).
             if (! empty($clientMeta)) {
