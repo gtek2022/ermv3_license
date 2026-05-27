@@ -37,7 +37,11 @@ class SyncUsageToInstallation
 
         $meta = $this->normalizeMeta($usage->meta);
 
-        $appCode = $meta['app'] ?? $usage->client_type ?? 'ermv3';
+        // Prefer client_type ('ermv3', 'pds') sebagai app_code karena itu adalah
+        // kode aplikasi yang stabil. $meta['app'] berisi config('app.name')
+        // yang berbeda untuk setiap deployment (e.g. "ERM - ABM" vs "PD System Kencana").
+        $appCode = $usage->client_type ?? $meta['app_code'] ?? $meta['client_type'] ?? 'ermv3';
+
         // Find the matching LicenseApp inside this license company
         $licenseApp = LicenseApp::where('license_company_id', $licenseCompany->id)
             ->where('app_code', $appCode)
@@ -119,7 +123,7 @@ class SyncUsageToInstallation
         if (! $installation) {
             $meta = $this->normalizeMeta($usage->meta);
 
-            $appCode = $meta['app'] ?? $usage->client_type ?? 'ermv3';
+            $appCode = $usage->client_type ?? $meta['app_code'] ?? $meta['client_type'] ?? 'ermv3';
             $licenseApp = LicenseApp::where('license_company_id', $licenseCompany->id)
                 ->where('app_code', $appCode)
                 ->first()
