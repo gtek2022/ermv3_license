@@ -265,6 +265,81 @@ class LicenseCompanyController extends Controller
         return back()->with('success', $msg);
     }
 
+    /**
+     * Show edit form. Hanya field kosmetik (label, notes, max_installations).
+     */
+    public function edit(string $hash): View
+    {
+        $license = $this->findOrFail($hash);
+        $license->load(['company', 'activeInstallations']);
+
+        return view('license.companies.edit', compact('license'));
+    }
+
+    /**
+     * Update license info (cosmetic fields only — TIDAK menyentuh license_key,
+     * company_id, expires_at, atau status karena field-field tersebut punya
+     * flow dedicated sendiri (regenerate, adjust-expiry, suspend/cancel).
+     *
+     * Field yang boleh diedit:
+     *   - label (kosmetik display saja)
+     *   - notes (kosmetik)
+     *   - max_installations (perlu warning kalau diturunkan)
+     *
+     * Update label TIDAK punya efek ke lain — label hanya untuk display admin,
+     * tidak dipakai di API, fingerprint, atau heartbeat.
+     */
+    public function update(Request $request, string $hash): RedirectResponse
+    {
+        $data = $request->validate([
+            'label'             => 'nullable|string|max:255',
+            'notes'             => 'nullable|string|max:5000',
+            'max_installations' => 'required|integer|min:1|max:100',
+        ]);
+
+        $license = $this->findOrFail($hash);
+        $oldMax  = $license->max_installations;
+        $newMax  = (int) $data['max_installations'];
+
+        $license->update([
+            'label'             => $data['label'] ?? null,
+            'notes'             => $data['notes'] ?? null,
+            'max_installations' => $newMax,
+            'updated_by'        => auth()->id(),
+        ]);
+
+        // Sync max_usages ke package License juga supaya enforce di activate endpoint
+        try {
+            $pkgLicense = License::where('key_hash', $license->license_key_hash)->first();
+            if ($pkgLicense) {
+                $pkgLicense->update(['max_usages' => $newMax]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to sync max_usages to package License: ' . $e->getMessage());
+        }
+
+        // Sync max_installations ke license_apps juga
+        $license->licenseApps()->update(['max_installations' => $newMax]);
+
+        LicenseLogsAudit::record('updated', 'license_company', $license->id, [
+            'changes' => [
+                'label'             => $license->getOriginal('label') !== $data['label'],
+                'notes'             => $license->getOriginal('notes') !== $data['notes'],
+                'max_installations' => $oldMax !== $newMax ? "$oldMax → $newMax" : null,
+            ],
+        ]);
+
+        $msg = 'License info updated.';
+        if ($newMax < $oldMax) {
+            $activeCount = $license->activeInstallations()->count();
+            if ($activeCount > $newMax) {
+                $msg .= " ⚠ Catatan: ada {$activeCount} install aktif, melebihi limit baru {$newMax}. Install yang ada masih jalan, tapi aktivasi baru akan ditolak.";
+            }
+        }
+
+        return redirect()->route('license.companies.show', $hash)->with('success', $msg);
+    }
+
     public function updatePolicy(Request $request, string $hash): RedirectResponse
     {        $data = $request->validate([
             'heartbeat_tolerance' => 'required|integer|min:1|max:20',

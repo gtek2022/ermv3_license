@@ -77,6 +77,7 @@
                         <td>
                             <div style="display:flex;gap:.35rem;align-items:center;">
                                 <a href="{{ route('license.companies.show', $hash) }}" class="btn btn-secondary btn-sm">View</a>
+                                <a href="{{ route('license.companies.edit', $hash) }}" class="btn btn-secondary btn-sm">Edit</a>
                                 <a href="{{ route('license.companies.delete-confirm', $hash) }}" class="btn btn-danger btn-sm">Hapus</a>
                             </div>
                         </td>
