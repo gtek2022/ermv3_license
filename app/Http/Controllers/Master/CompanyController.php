@@ -102,16 +102,29 @@ class CompanyController extends Controller
     {
         $company = $this->findOrFail($hash);
 
+        // Block kalau company masih punya license aktif/suspended/expired (any non-deleted)
+        $licenseCount = \App\Models\LicenseCompany::where('company_id', $company->id)
+            ->whereIn('status', ['active', 'suspended', 'expired'])
+            ->count();
+
+        if ($licenseCount > 0) {
+            return back()->with('error',
+                "Tidak dapat menghapus \"{$company->name}\" — masih ada {$licenseCount} lisensi yang terdaftar. "
+                . "Hapus atau cancel semua lisensi terkait dulu sebelum hapus company."
+            );
+        }
+
         LogAudit::record('deleted', 'master_company', [
             'subject_type'  => 'MasterCompany',
             'subject_id'    => $company->id,
             'subject_label' => $company->name,
         ]);
 
+        // Soft-delete (model pakai SoftDeletes)
         $company->delete();
 
         return redirect()->route('master.companies.index')
-            ->with('success', 'Company deleted.');
+            ->with('success', "Company \"{$company->name}\" berhasil dihapus.");
     }
 
     private function findOrFail(string $hash): MasterCompany

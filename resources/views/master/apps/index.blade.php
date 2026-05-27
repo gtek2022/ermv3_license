@@ -23,7 +23,20 @@
                         <td style="font-size:.75rem;color:#64748b;">{{ $app->version ?? '—' }}</td>
                         <td><span class="badge {{ $app->status === 'active' ? 'badge-success' : 'badge-secondary' }}">{{ $app->status }}</span></td>
                         <td style="text-align:center;">{{ $app->features_count }}</td>
-                        <td><a href="{{ route('master.apps.show', Hashids::encode($app->id)) }}" class="btn btn-secondary btn-sm">View</a></td>
+                        <td>
+                            <div style="display:flex;gap:.35rem;">
+                                <a href="{{ route('master.apps.show', Hashids::encode($app->id)) }}" class="btn btn-secondary btn-sm">View</a>
+                                <form method="POST" action="{{ route('master.apps.destroy', Hashids::encode($app->id)) }}"
+                                      data-confirm="Hapus app {{ $app->name }}? Semua feature ({{ $app->features_count }}) ikut terhapus. Tindakan ini diblok kalau masih ada lisensi aktif yang memakai code ini."
+                                      data-confirm-type="danger"
+                                      data-confirm-title="Hapus Aplikasi"
+                                      data-confirm-ok="Ya, Hapus"
+                                      style="margin:0;">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
                     @empty
                     <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:2rem;">No apps registered.</td></tr>

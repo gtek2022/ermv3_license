@@ -14,6 +14,15 @@
             <span class="card-title">Company Info</span>
             <div style="display:flex;gap:.5rem;">
                 <a href="{{ route('master.companies.edit', $companyHash) }}" class="btn btn-secondary btn-sm">Edit</a>
+                <form method="POST" action="{{ route('master.companies.destroy', $companyHash) }}"
+                      data-confirm="Hapus company {{ $company->name }}? Akan diblok kalau masih ada lisensi aktif."
+                      data-confirm-type="danger"
+                      data-confirm-title="Hapus Company"
+                      data-confirm-ok="Ya, Hapus"
+                      style="margin:0;">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                </form>
                 <span class="badge {{ $company->status === 'active' ? 'badge-success' : 'badge-secondary' }}">{{ $company->status }}</span>
             </div>
         </div>

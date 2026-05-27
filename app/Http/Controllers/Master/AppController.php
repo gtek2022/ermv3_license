@@ -183,7 +183,64 @@ class AppController extends Controller
             ->where('app_code', $feature->app_code)
             ->update(['status' => 'revoked', 'revoked_at' => now()]);
 
-        return back()->with('success', 'Kunci baru: ' . $newKey . ' — Semua aktivasi lama dicabut. ERMv3 harus aktivasi ulang.');
+        return back()->with('success', 'Kunci baru: ' . $newKey . ' — Semua aktivasi lama dicabut. Aplikasi client harus aktivasi ulang.');
+    }
+
+    /**
+     * Soft-delete a registered app. Aman dilakukan kalau:
+     *   - Tidak ada license_apps yang masih aktif memakai code ini
+     *   - Tidak ada feature activation yang masih aktif
+     *
+     * Kalau ada dependency aktif → block dengan pesan yang jelas.
+     * Master features ikut soft-deleted (cascade) supaya kalau app didaftar ulang
+     * dengan code sama, tidak konflik dengan feature lama.
+     */
+    public function destroy(string $hash): RedirectResponse
+    {
+        $app = $this->findOrFail($hash);
+
+        // Block kalau masih ada license_apps active yang memakai code ini
+        $activeLicenseApps = \App\Models\LicenseApp::where('app_code', $app->code)
+            ->where('status', 'active')
+            ->count();
+
+        if ($activeLicenseApps > 0) {
+            return back()->with('error',
+                "Tidak dapat menghapus app \"{$app->name}\" — masih ada {$activeLicenseApps} lisensi aktif yang memakai app code \"{$app->code}\". "
+                . "Cancel/suspend semua lisensi terkait dulu sebelum hapus app."
+            );
+        }
+
+        // Block kalau masih ada activation aktif untuk fitur app ini
+        $activeFeatureActivations = LicenseFeatureActivation::where('app_code', $app->code)
+            ->where('status', 'active')
+            ->count();
+
+        if ($activeFeatureActivations > 0) {
+            return back()->with('error',
+                "Tidak dapat menghapus app \"{$app->name}\" — masih ada {$activeFeatureActivations} feature activation aktif. "
+                . "Revoke semua FLK aktif untuk app ini dulu."
+            );
+        }
+
+        // Aman dihapus — cascade ke features juga (soft-delete kalau model pakai SoftDeletes,
+        // hard-delete kalau tidak)
+        \DB::transaction(function () use ($app) {
+            // Master features tidak pakai SoftDeletes → hard delete
+            MasterAppFeature::where('app_code', $app->code)->delete();
+
+            // App pakai SoftDeletes
+            $app->delete();
+        });
+
+        LogAudit::record('deleted', 'master_app', [
+            'subject_type'  => 'MasterApp',
+            'subject_id'    => $app->id,
+            'subject_label' => $app->name,
+        ]);
+
+        return redirect()->route('master.apps.index')
+            ->with('success', "Aplikasi \"{$app->name}\" berhasil dihapus.");
     }
 
     private function findOrFail(string $hash): MasterApp

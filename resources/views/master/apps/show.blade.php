@@ -14,7 +14,18 @@
     <div class="card">
         <div class="card-header">
             <span class="card-title">App Info</span>
-            <a href="{{ route('master.apps.edit', Hashids::encode($app->id)) }}" class="btn btn-secondary btn-sm">Edit</a>
+            <div style="display:flex;gap:.5rem;">
+                <a href="{{ route('master.apps.edit', Hashids::encode($app->id)) }}" class="btn btn-secondary btn-sm">Edit</a>
+                <form method="POST" action="{{ route('master.apps.destroy', Hashids::encode($app->id)) }}"
+                      data-confirm="Hapus app {{ $app->name }}? Semua feature ikut terhapus. Akan diblok kalau ada lisensi/aktivasi aktif."
+                      data-confirm-type="danger"
+                      data-confirm-title="Hapus Aplikasi"
+                      data-confirm-ok="Ya, Hapus"
+                      style="margin:0;">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                </form>
+            </div>
         </div>
         <div class="card-body">
             @foreach([['Code','code'],['Version','version'],['Status','status'],['Base URL','base_url']] as [$label,$field])

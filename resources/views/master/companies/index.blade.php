@@ -25,7 +25,18 @@
                         <td style="text-align:center;">{{ $company->license_companies_count }}</td>
                         <td style="font-size:.72rem;color:#94a3b8;">{{ $company->created_at->format('d M Y') }}</td>
                         <td>
-                            <a href="{{ route('master.companies.show', Hashids::encode($company->id)) }}" class="btn btn-secondary btn-sm">View</a>
+                            <div style="display:flex;gap:.35rem;">
+                                <a href="{{ route('master.companies.show', Hashids::encode($company->id)) }}" class="btn btn-secondary btn-sm">View</a>
+                                <form method="POST" action="{{ route('master.companies.destroy', Hashids::encode($company->id)) }}"
+                                      data-confirm="Hapus company {{ $company->name }}? Tindakan ini soft-delete — data masih bisa direstore via DB."
+                                      data-confirm-type="danger"
+                                      data-confirm-title="Hapus Company"
+                                      data-confirm-ok="Ya, Hapus"
+                                      style="margin:0;">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty

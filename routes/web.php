@@ -42,6 +42,7 @@ Route::middleware(['auth'])->group(function () {
         // Sub-routes before /{hash} wildcard
         Route::get('/{hash}/edit', [AppController::class, 'edit'])->name('edit');
         Route::put('/{hash}', [AppController::class, 'update'])->name('update');
+        Route::delete('/{hash}', [AppController::class, 'destroy'])->name('destroy');
         Route::post('/{hash}/features', [AppController::class, 'storeFeature'])->name('features.store');
         Route::delete('/{hash}/features/{featureId}', [AppController::class, 'destroyFeature'])->name('features.destroy');
         Route::post('/{hash}/features/{featureId}/toggle', [AppController::class, 'toggleFeature'])->name('features.toggle');
