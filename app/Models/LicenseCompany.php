@@ -51,7 +51,13 @@ class LicenseCompany extends Model
 
     public function isExpired(): bool
     {
+        // Lifetime license (expires_at = NULL) tidak pernah expired
         return $this->expires_at && $this->expires_at->isPast();
+    }
+
+    public function isLifetime(): bool
+    {
+        return $this->expires_at === null;
     }
 
     public function isActive(): bool

@@ -42,13 +42,24 @@ class LicenseCompanyController extends Controller
         $data = $request->validate([
             'company_id'        => 'required|integer',
             'label'             => 'nullable|string|max:255',
-            'days'              => 'required|integer|min:1|max:3650',
+            'is_lifetime'       => 'nullable|boolean',
+            'days'              => 'nullable|integer|min:1|max:36500',
             'max_installations' => 'required|integer|min:1|max:100',
             'notes'             => 'nullable|string',
             'app_codes'         => 'required|array|min:1',
             'app_codes.*'       => 'string|exists:master_apps,code',
             'app_max_inst'      => 'nullable|array',
         ]);
+
+        $isLifetime = (bool) ($data['is_lifetime'] ?? false);
+
+        if (! $isLifetime && empty($data['days'])) {
+            return back()->withErrors([
+                'days' => 'Field "days" wajib diisi kalau bukan lifetime license.',
+            ])->withInput();
+        }
+
+        $expiresAt = $isLifetime ? null : now()->addDays((int) $data['days']);
 
         // Generate license key
         $key     = 'LIC-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4))
@@ -62,7 +73,7 @@ class LicenseCompanyController extends Controller
             'label'             => $data['label'] ?? null,
             'status'            => 'active',
             'activated_at'      => now(),
-            'expires_at'        => now()->addDays((int) $data['days']),
+            'expires_at'        => $expiresAt,
             'max_installations' => (int) $data['max_installations'],
             'notes'             => $data['notes'] ?? null,
             'created_by'        => auth()->id(),
@@ -76,14 +87,18 @@ class LicenseCompanyController extends Controller
                 'app_code'           => $appCode,
                 'status'             => 'active',
                 'valid_from'         => now(),
-                'valid_until'        => now()->addDays((int) $data['days']),
+                'valid_until'        => $expiresAt,
                 'max_installations'  => $maxInst,
                 'created_by'        => auth()->id(),
             ]);
         }
 
         LicenseLogsAudit::record('activated', 'license_company', $license->id, [
-            'new' => ['key' => substr($key, 0, 8) . '...', 'apps' => $data['app_codes']],
+            'new' => [
+                'key'      => substr($key, 0, 8) . '...',
+                'apps'     => $data['app_codes'],
+                'lifetime' => $isLifetime,
+            ],
         ]);
 
         // Sync to package's `licenses` table — required for the
@@ -153,14 +168,101 @@ class LicenseCompanyController extends Controller
             'updated_by' => auth()->id(),
         ]);
 
-        // Extend all license_apps too
+        // Update license_apps valid_until too
         $license->licenseApps()->update(['valid_until' => $newExpiry]);
 
         LicenseLogsAudit::record('renewed', 'license_company', $license->id, [
             'new' => ['expires_at' => $newExpiry->toDateString()],
+            'days_added' => (int) $data['days'],
         ]);
 
         return back()->with('success', 'License renewed until ' . $newExpiry->format('d M Y') . '.');
+    }
+
+    /**
+     * Adjust license expiry. Supports three modes:
+     *   - mode=lifetime               → set expires_at = NULL (never expires)
+     *   - mode=set_date, expires_at   → set to a specific date
+     *   - mode=add_days, days         → add N days (negative allowed = subtract)
+     *
+     * Replaces the old renew flow because admin now needs full control:
+     * shorten, extend, or convert to lifetime.
+     */
+    public function adjustExpiry(Request $request, string $hash): RedirectResponse
+    {
+        $data = $request->validate([
+            'mode'       => 'required|string|in:lifetime,set_date,add_days',
+            'expires_at' => 'nullable|date',
+            'days'       => 'nullable|integer|min:-36500|max:36500',
+            'reason'     => 'nullable|string|max:500',
+        ]);
+
+        $license = $this->findOrFail($hash);
+        $old     = $license->expires_at;
+
+        switch ($data['mode']) {
+            case 'lifetime':
+                $newExpiry = null;
+                break;
+
+            case 'set_date':
+                if (empty($data['expires_at'])) {
+                    return back()->withErrors(['expires_at' => 'Tanggal expires wajib diisi.'])->withInput();
+                }
+                $newExpiry = \Carbon\Carbon::parse($data['expires_at'])->endOfDay();
+                break;
+
+            case 'add_days':
+                if (! isset($data['days']) || $data['days'] === 0) {
+                    return back()->withErrors(['days' => 'Days tidak boleh 0.'])->withInput();
+                }
+                $base = ($license->expires_at && $license->expires_at->isFuture())
+                    ? $license->expires_at
+                    : now();
+                $newExpiry = $base->copy()->addDays((int) $data['days']);
+                if ($newExpiry->isPast()) {
+                    return back()->withErrors([
+                        'days' => 'Hasil pengurangan membuat tanggal expires di masa lalu. License akan expired segera.',
+                    ])->withInput();
+                }
+                break;
+        }
+
+        $license->update([
+            'expires_at' => $newExpiry,
+            // Re-activate kalau dulunya expired tapi sekarang valid lagi
+            'status'     => $newExpiry === null || $newExpiry->isFuture() ? 'active' : $license->status,
+            'updated_by' => auth()->id(),
+        ]);
+
+        // Sync ke license_apps + package License
+        $license->licenseApps()->update(['valid_until' => $newExpiry]);
+
+        try {
+            $pkgLicense = License::where('key_hash', $license->license_key_hash)->first();
+            if ($pkgLicense) {
+                $pkgLicense->update(['expires_at' => $newExpiry]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to sync expires_at to package License: ' . $e->getMessage());
+        }
+
+        LicenseLogsAudit::record('expiry_adjusted', 'license_company', $license->id, [
+            'mode'   => $data['mode'],
+            'old'    => ['expires_at' => $old?->toIso8601String()],
+            'new'    => ['expires_at' => $newExpiry?->toIso8601String() ?? 'lifetime'],
+            'reason' => $data['reason'] ?? null,
+        ]);
+
+        $msg = match ($data['mode']) {
+            'lifetime' => 'License berhasil diubah menjadi LIFETIME (tidak akan expired).',
+            'set_date' => 'Expiry diset ke ' . $newExpiry->format('d M Y') . '.',
+            'add_days' => ($data['days'] > 0)
+                ? 'Diperpanjang ' . $data['days'] . ' hari → ' . $newExpiry->format('d M Y') . '.'
+                : 'Dikurangi ' . abs($data['days']) . ' hari → ' . $newExpiry->format('d M Y') . '.',
+        };
+
+        return back()->with('success', $msg);
     }
 
     public function updatePolicy(Request $request, string $hash): RedirectResponse

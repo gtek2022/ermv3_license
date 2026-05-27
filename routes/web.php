@@ -90,6 +90,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{hash}/reinstate', [LicenseCompanyController::class, 'reinstate'])->name('reinstate');
         Route::post('/{hash}/cancel', [LicenseCompanyController::class, 'cancel'])->name('cancel');
         Route::post('/{hash}/renew', [LicenseCompanyController::class, 'renew'])->name('renew');
+        Route::post('/{hash}/adjust-expiry', [LicenseCompanyController::class, 'adjustExpiry'])->name('adjust-expiry');
         Route::post('/{hash}/policy', [LicenseCompanyController::class, 'updatePolicy'])->name('policy.update');
         Route::post('/{hash}/features', [LicenseCompanyController::class, 'addFeature'])->name('features.add');
         Route::delete('/{hash}/features/{featureId}', [LicenseCompanyController::class, 'removeFeature'])->name('features.remove');

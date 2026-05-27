@@ -27,12 +27,26 @@
             </div>
         </div>
         <div class="card-body">
-            @foreach([['Company', $license->company?->name ?? '—'],['Label', $license->label ?? '—'],['Key', substr($license->license_key,0,12).'…'],['Activated', $license->activated_at?->format('d M Y H:i') ?? '—'],['Expires', $license->expires_at?->format('d M Y') ?? '∞'],['Max Installs', $license->max_installations]] as [$label,$val])
+            @php
+                $expiresLabel = $license->expires_at
+                    ? $license->expires_at->format('d M Y')
+                    : '∞ Lifetime';
+                $expiresStyle = $license->expires_at ? '' : 'color:#7c3aed;font-weight:600;';
+            @endphp
+            @foreach([['Company', $license->company?->name ?? '—'],['Label', $license->label ?? '—'],['Key', substr($license->license_key,0,12).'…'],['Activated', $license->activated_at?->format('d M Y H:i') ?? '—']] as [$label,$val])
             <div style="display:flex;padding:.4rem 0;border-bottom:1px solid #f1f5f9;">
                 <span style="font-size:.72rem;color:#64748b;width:100px;flex-shrink:0;">{{ $label }}</span>
                 <span style="font-size:.82rem;">{{ $val }}</span>
             </div>
             @endforeach
+            <div style="display:flex;padding:.4rem 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-size:.72rem;color:#64748b;width:100px;flex-shrink:0;">Expires</span>
+                <span style="font-size:.82rem;{{ $expiresStyle }}">{{ $expiresLabel }}</span>
+            </div>
+            <div style="display:flex;padding:.4rem 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-size:.72rem;color:#64748b;width:100px;flex-shrink:0;">Max Installs</span>
+                <span style="font-size:.82rem;">{{ $license->max_installations }}</span>
+            </div>
 
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;padding-top:1rem;border-top:1px solid #f1f5f9;">
                 @if($license->status === 'active')
@@ -41,12 +55,75 @@
                 @elseif($license->status === 'suspended')
                 <form method="POST" action="{{ route('license.companies.reinstate', $hash) }}">@csrf<button class="btn btn-success btn-sm">Reinstate</button></form>
                 @endif
-                <form method="POST" action="{{ route('license.companies.renew', $hash) }}" style="display:flex;gap:.4rem;align-items:center;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('adjustExpiryPanel').style.display='block';this.style.display='none';">⏱ Adjust Expiry</button>
+            </div>
+
+            {{-- Adjust Expiry Panel --}}
+            <div id="adjustExpiryPanel" style="display:none;margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+                    <strong style="font-size:.85rem;color:#0f172a;">Adjust License Expiry</strong>
+                    <button type="button" onclick="document.getElementById('adjustExpiryPanel').style.display='none';" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:#94a3b8;">×</button>
+                </div>
+
+                <form method="POST" action="{{ route('license.companies.adjust-expiry', $hash) }}"
+                      data-confirm="Yakin ubah masa berlaku license ini?"
+                      data-confirm-type="info"
+                      data-confirm-title="Konfirmasi Adjust Expiry"
+                      data-confirm-ok="Ya, Update">
                     @csrf
-                    <input type="number" name="days" value="365" min="1" max="3650" style="width:70px;padding:.3rem .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.75rem;">
-                    <button class="btn btn-success btn-sm">Renew</button>
+
+                    <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.78rem;">
+                        <label style="display:flex;align-items:center;gap:.5rem;padding:.6rem;background:#fff;border:1.5px solid #e2e8f0;border-radius:6px;cursor:pointer;">
+                            <input type="radio" name="mode" value="add_days" checked onchange="adjustExpToggle()" style="margin:0;">
+                            <span><strong>Tambah / Kurangi hari</strong> — geser tanggal expiry. Negatif untuk kurangi.</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:.5rem;padding:.6rem;background:#fff;border:1.5px solid #e2e8f0;border-radius:6px;cursor:pointer;">
+                            <input type="radio" name="mode" value="set_date" onchange="adjustExpToggle()" style="margin:0;">
+                            <span><strong>Set tanggal pasti</strong> — pilih tanggal expiry persis.</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:.5rem;padding:.6rem;background:#fff;border:1.5px solid #e2e8f0;border-radius:6px;cursor:pointer;">
+                            <input type="radio" name="mode" value="lifetime" onchange="adjustExpToggle()" style="margin:0;">
+                            <span><strong>Convert ke Lifetime</strong> — license tidak akan pernah expired (∞).</span>
+                        </label>
+                    </div>
+
+                    <div id="adjustModeAddDays" style="margin-top:.75rem;">
+                        <label style="font-size:.72rem;color:#64748b;display:block;margin-bottom:.25rem;">Days (positif = tambah, negatif = kurangi)</label>
+                        <input type="number" name="days" id="adjust_days" value="365" min="-36500" max="36500"
+                               class="form-control" style="font-size:.85rem;">
+                        <div style="display:flex;gap:.25rem;margin-top:.4rem;flex-wrap:wrap;">
+                            @foreach([[-30,'-30'],[-7,'-7'],[7,'+7'],[30,'+30'],[90,'+90'],[365,'+365']] as [$d,$lbl])
+                            <button type="button" onclick="document.getElementById('adjust_days').value={{ $d }}"
+                                    class="btn btn-secondary btn-sm" style="font-size:.7rem;padding:.2rem .5rem;">{{ $lbl }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div id="adjustModeSetDate" style="margin-top:.75rem;display:none;">
+                        <label style="font-size:.72rem;color:#64748b;display:block;margin-bottom:.25rem;">Tanggal Expires</label>
+                        <input type="date" name="expires_at"
+                               value="{{ $license->expires_at?->toDateString() ?? now()->addYear()->toDateString() }}"
+                               class="form-control" style="font-size:.85rem;">
+                    </div>
+
+                    <div style="margin-top:.75rem;">
+                        <label style="font-size:.72rem;color:#64748b;display:block;margin-bottom:.25rem;">Alasan (opsional, tercatat di audit log)</label>
+                        <input type="text" name="reason" placeholder="mis. perpanjangan langganan tahunan"
+                               class="form-control" style="font-size:.78rem;">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.75rem;">Update Expiry</button>
                 </form>
             </div>
+            <script>
+            function adjustExpToggle() {
+                var modes = document.querySelectorAll('input[name="mode"]');
+                var sel = '';
+                modes.forEach(function (r) { if (r.checked) sel = r.value; });
+                document.getElementById('adjustModeAddDays').style.display = (sel === 'add_days') ? '' : 'none';
+                document.getElementById('adjustModeSetDate').style.display = (sel === 'set_date') ? '' : 'none';
+            }
+            </script>
         </div>
     </div>
 

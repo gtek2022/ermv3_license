@@ -68,7 +68,7 @@
                                     {{ $lic->expires_at->format('d M Y') }}
                                 </span>
                             @else
-                                <span style="color:#94a3b8;">∞</span>
+                                <span style="font-size:.7rem;color:#7c3aed;font-weight:600;" title="Lifetime — never expires">∞ Lifetime</span>
                             @endif
                         </td>
 

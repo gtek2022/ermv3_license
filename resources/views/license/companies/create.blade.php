@@ -29,15 +29,49 @@
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div class="form-group">
-                    <label class="form-label">Validity (days) *</label>
-                    <input type="number" name="days" class="form-control @error('days') is-invalid @enderror" value="{{ old('days', 365) }}" min="1" max="3650" required>
+                    <label class="form-label">Validity *</label>
+                    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
+                        <label style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;cursor:pointer;">
+                            <input type="checkbox" name="is_lifetime" id="is_lifetime" value="1"
+                                   {{ old('is_lifetime') ? 'checked' : '' }}
+                                   style="width:auto;margin:0;">
+                            <span>Lifetime (tidak pernah expired)</span>
+                        </label>
+                    </div>
+                    <input type="number" name="days" id="days_input"
+                           class="form-control @error('days') is-invalid @enderror"
+                           value="{{ old('days', 365) }}" min="1" max="36500"
+                           placeholder="Hari berlaku (mis. 365 = 1 tahun)">
                     @error('days')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <small style="font-size:.68rem;color:#94a3b8;">
+                        Centang lifetime untuk lisensi tanpa batas waktu (perpetual / OEM).
+                    </small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Max Installations *</label>
                     <input type="number" name="max_installations" class="form-control" value="{{ old('max_installations', 1) }}" min="1" max="100" required>
                 </div>
             </div>
+
+            <script>
+            (function () {
+                var lifetime = document.getElementById('is_lifetime');
+                var days     = document.getElementById('days_input');
+                function toggle() {
+                    if (lifetime.checked) {
+                        days.disabled = true;
+                        days.value = '';
+                        days.placeholder = '— Lifetime —';
+                    } else {
+                        days.disabled = false;
+                        if (! days.value) days.value = 365;
+                        days.placeholder = 'Hari berlaku (mis. 365 = 1 tahun)';
+                    }
+                }
+                lifetime && lifetime.addEventListener('change', toggle);
+                toggle();
+            })();
+            </script>
 
             <div class="form-group">
                 <label class="form-label">Licensed Apps *</label>
