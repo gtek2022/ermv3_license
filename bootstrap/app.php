@@ -12,7 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Append a terminate-only middleware that logs licensing API errors
+        // (4xx with security-relevant codes) into license_logs_suspicious so
+        // admins can review attack attempts via the dashboard.
+        $middleware->api(append: [
+            \App\Http\Middleware\RecordSuspiciousLicensingEvent::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -318,41 +318,43 @@
       <div class="sidebar-sub">Gemilang Inti Teknologi</div>
     </div>
     <nav>
-      <a class="section-title">Mulai Cepat</a>
-      <a href="#overview">Overview Sistem</a>
-      <a href="#arsitektur">Arsitektur &amp; Diagram</a>
-      <a href="#alur-lisensi">Alur Lisensi</a>
+      <a class="section-title">📚 Mulai Cepat</a>
+      <a href="#overview">1. Apa Itu Sistem Lisensi?</a>
+      <a href="#arsitektur">2. Arsitektur &amp; Diagram</a>
+      <a href="#alur-lisensi">3. Alur Lisensi (Logic)</a>
+      <a href="#siapa-mengerjakan-apa">4. Siapa Mengerjakan Apa?</a>
 
-      <a class="section-title">Untuk Admin</a>
-      <a href="#admin-login">Login Gemilang</a>
-      <a href="#admin-company">Tambah Company Client</a>
-      <a href="#admin-app">Daftarkan Aplikasi</a>
-      <a href="#admin-feature">Setup Feature</a>
-      <a href="#admin-license">Terbitkan Lisensi</a>
-      <a href="#admin-feature-license">Lisensi Per-Fitur (FLK)</a>
-      <a href="#admin-monitor">Monitor Instalasi</a>
-      <a href="#admin-revoke">Revoke / Suspend / Renew</a>
-      <a href="#admin-regenerate">Regenerate Kunci</a>
-      <a href="#admin-config">Tuning Heartbeat</a>
+      <a class="section-title">👤 Untuk Admin (Operasional)</a>
+      <a href="#admin-login">1. Login Gemilang</a>
+      <a href="#admin-company">2. Tambah Company Client</a>
+      <a href="#admin-app">3. Daftarkan Aplikasi</a>
+      <a href="#admin-feature">4. Setup Feature</a>
+      <a href="#admin-license">5. Terbitkan Lisensi</a>
+      <a href="#admin-feature-license">6. Lisensi Per-Fitur (FLK)</a>
+      <a href="#admin-monitor">7. Monitor Instalasi</a>
+      <a href="#admin-suspicious">8. Suspicious Events</a>
+      <a href="#admin-revoke">9. Revoke / Suspend / Renew</a>
+      <a href="#admin-regenerate">10. Regenerate Kunci</a>
+      <a href="#admin-config">11. Tuning Heartbeat</a>
 
-      <a class="section-title">Untuk Client / User Aplikasi</a>
-      <a href="#client-aktivasi">Aktivasi ERM Pertama Kali</a>
-      <a href="#client-aktivasi-fitur">Aktivasi Fitur Tambahan</a>
-      <a href="#client-status">Cek Status Lisensi</a>
-      <a href="#client-troubleshoot">Troubleshoot</a>
+      <a class="section-title">🖥️ Untuk Client / User</a>
+      <a href="#client-aktivasi">1. Aktivasi Pertama Kali</a>
+      <a href="#client-aktivasi-fitur">2. Aktivasi Fitur Tambahan</a>
+      <a href="#client-status">3. Cek Status Lisensi</a>
+      <a href="#client-troubleshoot">4. Troubleshoot</a>
 
-      <a class="section-title">Untuk Developer</a>
-      <a href="#dev-arsitektur">Arsitektur Detail</a>
-      <a href="#dev-deployment">Deployment</a>
-      <a href="#dev-env">Konfigurasi .env</a>
-      <a href="#dev-storage">Layout Storage</a>
-      <a href="#dev-api">API Endpoints</a>
-      <a href="#dev-integrasi">Integrasi di Code</a>
-      <a href="#dev-fingerprint">Fingerprint Generator</a>
-      <a href="#dev-heartbeat">Heartbeat Setup</a>
-      <a href="#dev-debug">Debugging</a>
+      <a class="section-title">⚙️ Untuk Developer</a>
+      <a href="#dev-arsitektur">1. Arsitektur Detail</a>
+      <a href="#dev-deployment">2. Deployment</a>
+      <a href="#dev-env">3. Konfigurasi .env</a>
+      <a href="#dev-storage">4. Layout Storage</a>
+      <a href="#dev-api">5. API Endpoints</a>
+      <a href="#dev-integrasi">6. Integrasi di Code</a>
+      <a href="#dev-fingerprint">7. Fingerprint Generator</a>
+      <a href="#dev-heartbeat">8. Heartbeat &amp; Cron Setup</a>
+      <a href="#dev-debug">9. Debugging</a>
 
-      <a class="section-title">Referensi</a>
+      <a class="section-title">📖 Referensi</a>
       <a href="#faq">FAQ</a>
       <a href="#glossary">Glosarium</a>
       <a href="#error-codes">Error Codes</a>
@@ -365,7 +367,7 @@
     <p class="lead">Sistem lisensi terpusat untuk produk Gemilang Inti Teknologi — komprehensif untuk admin, user aplikasi, dan developer.</p>
 
     <!-- ============================================================ -->
-    <h2 id="overview">Overview Sistem</h2>
+    <h2 id="overview">1. Apa Itu Sistem Lisensi?</h2>
 
     <p>Platform ERM dilindungi oleh sistem lisensi yang terdiri dari dua aplikasi yang berkomunikasi via HTTPS:</p>
 
@@ -401,7 +403,7 @@
     </ul>
 
     <!-- ============================================================ -->
-    <h2 id="arsitektur">Arsitektur &amp; Diagram</h2>
+    <h2 id="arsitektur">2. Arsitektur &amp; Diagram</h2>
 
     <h3>Topologi High-Level</h3>
     <div class="diagram">┌─────────────────────────────┐                                ┌──────────────────────────┐
@@ -450,7 +452,7 @@
     </ul>
 
     <!-- ============================================================ -->
-    <h2 id="alur-lisensi">Alur Lisensi (Logic Diagram)</h2>
+    <h2 id="alur-lisensi">3. Alur Lisensi (Logic Diagram)</h2>
 
     <h3>Alur Aktivasi (Pertama Kali)</h3>
     <div class="diagram">User             ERMv3                        Gemilang
@@ -586,7 +588,72 @@
     <hr>
 
     <!-- ============================================================ -->
-    <h2 id="admin-login"><span class="badge badge-admin">ADMIN</span> Login Gemilang</h2>
+    <h2 id="siapa-mengerjakan-apa">4. Siapa Mengerjakan Apa?</h2>
+
+    <p>Sistem ini dipakai oleh tiga peran berbeda. Tiap peran punya tanggung jawab yang jelas — kalau bingung, mulai dari sini:</p>
+
+    <table>
+      <thead>
+        <tr><th style="width:18%;">Peran</th><th style="width:35%;">Yang Dia Lakukan</th><th>Aplikasi yang Dia Buka</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-admin">ADMIN</span><br><strong>Tim Gemilang</strong></td>
+          <td>
+            <ul style="margin:0 0 0 1.2rem;">
+              <li>Daftarkan client baru (company)</li>
+              <li>Terbitkan lisensi</li>
+              <li>Monitor heartbeat semua client</li>
+              <li>Review suspicious events</li>
+              <li>Revoke / suspend / renew</li>
+              <li>Atur policy (interval, tolerance)</li>
+            </ul>
+          </td>
+          <td><strong>Gemilang</strong> (license server)<br>
+              <code>license.gemilangteknologi.com</code></td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-shared">CLIENT</span><br><strong>User Aplikasi</strong></td>
+          <td>
+            <ul style="margin:0 0 0 1.2rem;">
+              <li>Aktivasi ERM pertama kali pakai license key dari admin</li>
+              <li>Pantau status lisensi</li>
+              <li>Setup cron heartbeat (sekali, tinggal klik)</li>
+              <li>Lapor ke admin kalau muncul warning/lockout</li>
+            </ul>
+          </td>
+          <td><strong>ERMv3</strong> (aplikasi mereka)<br>
+              <code>erm.gemilangteknologi.com</code></td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-dev">DEV</span><br><strong>Developer Gemilang</strong></td>
+          <td>
+            <ul style="margin:0 0 0 1.2rem;">
+              <li>Deploy &amp; maintain kedua aplikasi</li>
+              <li>Integrasi license check di code ERMv3</li>
+              <li>Tambah feature licensing baru</li>
+              <li>Debug masalah teknis</li>
+              <li>Rotate signing keys</li>
+            </ul>
+          </td>
+          <td>Keduanya, plus terminal SSH ke server</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 Mau langsung loncat ke peran kamu?</div>
+      <ul style="margin:.5rem 0 0 1.2rem;">
+        <li>Admin → mulai dari <a href="#admin-login">Login Gemilang</a></li>
+        <li>User aplikasi → mulai dari <a href="#client-aktivasi">Aktivasi Pertama Kali</a></li>
+        <li>Developer → mulai dari <a href="#dev-arsitektur">Arsitektur Detail</a></li>
+      </ul>
+    </div>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-login"><span class="badge badge-admin">ADMIN</span> 1. Login Gemilang</h2>
 
     <ol class="steps">
       <li>Buka <code>https://license.gemilangteknologi.com/login</code></li>
@@ -605,7 +672,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <h2 id="admin-company"><span class="badge badge-admin">ADMIN</span> Tambah Company Client</h2>
+    <h2 id="admin-company"><span class="badge badge-admin">ADMIN</span> 2. Tambah Company Client</h2>
 
     <p>Setiap perusahaan klien yang akan menggunakan ERM diregister sebagai <strong>MasterCompany</strong> dulu sebelum bisa dibuatkan lisensi.</p>
 
@@ -623,7 +690,7 @@
     </ol>
 
     <!-- ============================================================ -->
-    <h2 id="admin-app"><span class="badge badge-admin">ADMIN</span> Daftarkan Aplikasi (App)</h2>
+    <h2 id="admin-app"><span class="badge badge-admin">ADMIN</span> 3. Daftarkan Aplikasi (App)</h2>
 
     <p>Setiap produk yang akan dilisensikan didaftarkan sebagai <strong>MasterApp</strong>. Default sudah ada <code>ermv3</code>.</p>
 
@@ -640,7 +707,7 @@
     </ol>
 
     <!-- ============================================================ -->
-    <h2 id="admin-feature"><span class="badge badge-admin">ADMIN</span> Setup Feature</h2>
+    <h2 id="admin-feature"><span class="badge badge-admin">ADMIN</span> 4. Setup Feature</h2>
 
     <p>Setiap aplikasi punya daftar fitur. Fitur bisa <strong>Free</strong> (cuma toggle on/off) atau <strong>Licensed</strong> (butuh kunci aktivasi tambahan / FLK).</p>
 
@@ -667,7 +734,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <h2 id="admin-license"><span class="badge badge-admin">ADMIN</span> Terbitkan Lisensi</h2>
+    <h2 id="admin-license"><span class="badge badge-admin">ADMIN</span> 5. Terbitkan Lisensi</h2>
 
     <ol class="steps">
       <li>Licensing → <strong>Licenses</strong> → <strong>+ New License</strong></li>
@@ -691,7 +758,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <h2 id="admin-feature-license"><span class="badge badge-admin">ADMIN</span> Lisensi Per-Fitur (FLK)</h2>
+    <h2 id="admin-feature-license"><span class="badge badge-admin">ADMIN</span> 6. Lisensi Per-Fitur (FLK)</h2>
 
     <p>Untuk fitur yang punya <strong>Requires License = true</strong>, perlu generate kunci aktivasi terpisah berformat <code>FLK-XXXX-XXXX-XXXX-XXXX</code>.</p>
 
@@ -710,7 +777,7 @@
     </ol>
 
     <!-- ============================================================ -->
-    <h2 id="admin-monitor"><span class="badge badge-admin">ADMIN</span> Monitor Instalasi</h2>
+    <h2 id="admin-monitor"><span class="badge badge-admin">ADMIN</span> 7. Monitor Instalasi</h2>
 
     <p>Halaman detail license menampilkan semua instalasi aktif beserta info lengkap device.</p>
 
@@ -742,7 +809,97 @@
     </ul>
 
     <!-- ============================================================ -->
-    <h2 id="admin-revoke"><span class="badge badge-admin">ADMIN</span> Revoke / Suspend / Cancel / Renew</h2>
+    <h2 id="admin-suspicious"><span class="badge badge-admin">ADMIN</span> 8. Suspicious Events</h2>
+
+    <p>Setiap kali ada percobaan akses ke API lisensi yang <em>tidak normal</em>, Gemilang otomatis mencatat event tersebut ke tabel <code>license_logs_suspicious</code>. Card "Suspicious Events" di dashboard akan muncul kalau ada event yang belum di-review.</p>
+
+    <h3>Kapan Suspicious Event Tercatat?</h3>
+    <p>Event tercatat secara otomatis saat endpoint <code>/api/licensing/v1/*</code> mengembalikan response error 4xx dengan kode error security-relevan. Tidak ada admin yang perlu menulisnya manual.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%;">Event Type</th>
+          <th style="width:14%;">Severity</th>
+          <th style="width:18%;">Trigger HTTP</th>
+          <th>Penjelasan</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>fingerprint_mismatch</code></td>
+          <td><span class="badge" style="background:#fef3c7;color:#92400e;">warning</span></td>
+          <td><code>403 FINGERPRINT_MISMATCH</code></td>
+          <td>License key valid, tapi fingerprint dari device yang request <strong>tidak terdaftar atau sudah di-revoke</strong>. Bisa terjadi kalau client clone aplikasi ke server lain tanpa aktivasi ulang, atau hardware berubah drastis (ganti motherboard, migrate VPS).</td>
+        </tr>
+        <tr>
+          <td><code>invalid_key</code></td>
+          <td><span class="badge" style="background:#fef3c7;color:#92400e;">warning</span></td>
+          <td><code>404 INVALID_KEY</code></td>
+          <td>Ada yang mencoba aktivasi pakai license key yang tidak ada di database (typo, kunci dari project lain, atau kunci palsu).</td>
+        </tr>
+        <tr>
+          <td><code>replay_attack</code></td>
+          <td><span class="badge" style="background:#fee2e2;color:#991b1b;">critical</span></td>
+          <td><code>422 INVALID_NONCE</code></td>
+          <td>Request memakai nonce (token sekali-pakai) yang sudah dipakai sebelumnya. Indikator kuat ada yang menyadap dan memutar ulang request lama.</td>
+        </tr>
+        <tr>
+          <td><code>seat_limit_exceeded</code></td>
+          <td><span class="badge" style="background:#fef3c7;color:#92400e;">warning</span></td>
+          <td><code>422 USAGE_LIMIT</code></td>
+          <td>License sudah penuh (semua slot <code>max_installations</code> terpakai), tapi ada yang mencoba aktivasi lagi. Bisa jadi client lupa revoke install lama, atau memang butuh upgrade slot.</td>
+        </tr>
+        <tr>
+          <td><code>revoked_attempt</code></td>
+          <td><span class="badge" style="background:#fee2e2;color:#991b1b;">critical</span></td>
+          <td><code>403 LICENSE_NOT_USABLE</code></td>
+          <td>License sudah <em>suspended</em>, <em>cancelled</em>, atau <em>expired</em>, tapi masih ada request masuk dari client. Indikator client belum tahu lisensi mereka dimatikan, atau ada yang coba bypass.</td>
+        </tr>
+        <tr>
+          <td><code>blacklisted</code></td>
+          <td><span class="badge" style="background:#fee2e2;color:#991b1b;">critical</span></td>
+          <td><code>403 BLACKLISTED</code></td>
+          <td>Install ditolak karena fingerprint masuk daftar hitam. Biasanya hasil tindakan admin sebelumnya untuk memblokir device tertentu.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Field yang Dicatat per Event</h3>
+    <ul>
+      <li><strong>event_type</strong> — kategori event (lihat tabel di atas)</li>
+      <li><strong>severity</strong> — <code>info</code> / <code>warning</code> / <code>critical</code></li>
+      <li><strong>license_company_id</strong> — license yang ditarget (kalau bisa di-resolve)</li>
+      <li><strong>installation_id</strong> — install yang ada di sisi gemilang (kalau ketemu fingerprint)</li>
+      <li><strong>registered_fingerprint</strong> vs <strong>received_fingerprint</strong> — bandingkan untuk fingerprint mismatch</li>
+      <li><strong>ip_address</strong>, <strong>domain</strong> — asal request</li>
+      <li><strong>details</strong> (JSON) — endpoint, error code, error message, user-agent</li>
+      <li><strong>occurred_at</strong> — kapan kejadian</li>
+      <li><strong>is_reviewed</strong>, <strong>reviewed_by</strong>, <strong>reviewed_at</strong> — track siapa sudah lihat</li>
+    </ul>
+
+    <h3>Cara Review Event</h3>
+    <ol class="steps">
+      <li>Dashboard tampil section <strong>Unreviewed Suspicious Events</strong> kalau ada</li>
+      <li>Klik <strong>Review</strong> → masuk ke detail installation yang related</li>
+      <li>Di halaman detail, scroll ke section <strong>Suspicious Events</strong></li>
+      <li>Klik tombol <strong>Review</strong> di event yang sudah ditelusuri — event ditandai reviewed</li>
+      <li>Kalau perlu memblokir client tertentu, klik <strong>Blacklist</strong> di header installation</li>
+    </ol>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 Severity sebagai panduan prioritas</div>
+      <ul style="margin:.5rem 0 0 1.2rem;">
+        <li><strong>warning</strong> — baca saat ada waktu, biasanya kesalahan konfigurasi client</li>
+        <li><strong>critical</strong> — review segera, kemungkinan ada upaya bypass atau replay</li>
+      </ul>
+    </div>
+
+    <h3>Lokasi Implementasi</h3>
+    <p>Lihat <code>app/Http/Middleware/RecordSuspiciousLicensingEvent.php</code> di gemilang. Middleware ini berjalan sebagai <em>terminate-only</em> — hanya logging setelah response sudah dikirim ke client, jadi tidak menambah latensi API.</p>
+
+    <!-- ============================================================ -->
+    <h2 id="admin-revoke"><span class="badge badge-admin">ADMIN</span> 9. Revoke / Suspend / Cancel / Renew</h2>
 
     <h3>Revoke Single Usage</h3>
     <p>Hapus satu instalasi (slot kembali kosong, client itu harus aktivasi ulang):</p>
@@ -788,7 +945,7 @@
     </ol>
 
     <!-- ============================================================ -->
-    <h2 id="admin-regenerate"><span class="badge badge-admin">ADMIN</span> Regenerate Kunci (Lupa atau Bocor)</h2>
+    <h2 id="admin-regenerate"><span class="badge badge-admin">ADMIN</span> 10. Regenerate Kunci (Lupa atau Bocor)</h2>
 
     <h3>Tampilkan Kunci Lama (Recovery)</h3>
     <ol class="steps">
@@ -811,7 +968,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <h2 id="admin-config"><span class="badge badge-admin">ADMIN</span> Tuning Heartbeat &amp; Policy</h2>
+    <h2 id="admin-config"><span class="badge badge-admin">ADMIN</span> 11. Tuning Heartbeat &amp; Policy</h2>
 
     <p>Default heartbeat policy bisa di-override per-license.</p>
 
@@ -842,7 +999,7 @@
     <hr>
 
     <!-- ============================================================ -->
-    <h2 id="client-aktivasi"><span class="badge badge-shared">CLIENT</span> Aktivasi ERM Pertama Kali</h2>
+    <h2 id="client-aktivasi"><span class="badge badge-shared">CLIENT</span> 1. Aktivasi ERM Pertama Kali</h2>
 
     <ol class="steps">
       <li>Pastikan ERMv3 sudah ter-install di server (lihat panduan deploy untuk DevOps)</li>
@@ -866,7 +1023,7 @@
     </ol>
 
     <!-- ============================================================ -->
-    <h2 id="client-aktivasi-fitur"><span class="badge badge-shared">CLIENT</span> Aktivasi Fitur Tambahan (FLK)</h2>
+    <h2 id="client-aktivasi-fitur"><span class="badge badge-shared">CLIENT</span> 2. Aktivasi Fitur Tambahan (FLK)</h2>
 
     <p>Untuk fitur premium yang dijual terpisah:</p>
 
@@ -882,7 +1039,7 @@
     <p>Untuk deactivate (sementara), klik tombol <strong>Deactivate</strong>. FLK key tetap valid dan bisa diaktifkan ulang nanti.</p>
 
     <!-- ============================================================ -->
-    <h2 id="client-status"><span class="badge badge-shared">CLIENT</span> Cek Status Lisensi</h2>
+    <h2 id="client-status"><span class="badge badge-shared">CLIENT</span> 3. Cek Status Lisensi</h2>
 
     <ol>
       <li>Akses <code>https://erm.client.com/license/status</code> kapan saja</li>
@@ -901,7 +1058,7 @@
     </ul>
 
     <!-- ============================================================ -->
-    <h2 id="client-troubleshoot"><span class="badge badge-shared">CLIENT</span> Troubleshoot</h2>
+    <h2 id="client-troubleshoot"><span class="badge badge-shared">CLIENT</span> 4. Troubleshoot</h2>
 
     <table>
       <thead><tr><th>Gejala</th><th>Kemungkinan Penyebab</th><th>Solusi</th></tr></thead>
@@ -952,7 +1109,7 @@
     <hr>
 
     <!-- ============================================================ -->
-    <h2 id="dev-arsitektur"><span class="badge badge-dev">DEV</span> Arsitektur Detail</h2>
+    <h2 id="dev-arsitektur"><span class="badge badge-dev">DEV</span> 1. Arsitektur Detail</h2>
 
     <h3>Komponen Server (Gemilang)</h3>
     <table>
@@ -985,7 +1142,7 @@
     </table>
 
     <!-- ============================================================ -->
-    <h2 id="dev-deployment"><span class="badge badge-dev">DEV</span> Deployment</h2>
+    <h2 id="dev-deployment"><span class="badge badge-dev">DEV</span> 2. Deployment</h2>
 
     <h3>Gemilang (License Server) — Pertama Kali</h3>
 
@@ -1061,7 +1218,7 @@ php artisan migrate          # kalau ada migration baru
 php artisan optimize</code></pre>
 
     <!-- ============================================================ -->
-    <h2 id="dev-env"><span class="badge badge-dev">DEV</span> Konfigurasi .env</h2>
+    <h2 id="dev-env"><span class="badge badge-dev">DEV</span> 3. Konfigurasi .env</h2>
 
     <h3>Gemilang Server</h3>
     <pre><code># Required
@@ -1106,7 +1263,7 @@ LICENSING_API_VERSION=v1</code></pre>
     </div>
 
     <!-- ============================================================ -->
-    <h2 id="dev-storage"><span class="badge badge-dev">DEV</span> Layout Storage</h2>
+    <h2 id="dev-storage"><span class="badge badge-dev">DEV</span> 4. Layout Storage</h2>
 
     <h3>ERMv3 Client</h3>
     <pre><code>storage/app/licensing/
@@ -1137,7 +1294,7 @@ LICENSING_API_VERSION=v1</code></pre>
 └── public-bundle.json        # public bundle untuk distribution</code></pre>
 
     <!-- ============================================================ -->
-    <h2 id="dev-api"><span class="badge badge-dev">DEV</span> API Endpoints</h2>
+    <h2 id="dev-api"><span class="badge badge-dev">DEV</span> 5. API Endpoints</h2>
 
     <h3>Public (No Auth)</h3>
     <table>
@@ -1176,7 +1333,7 @@ LICENSING_API_VERSION=v1</code></pre>
     </table>
 
     <!-- ============================================================ -->
-    <h2 id="dev-integrasi"><span class="badge badge-dev">DEV</span> Integrasi di Code (ERMv3)</h2>
+    <h2 id="dev-integrasi"><span class="badge badge-dev">DEV</span> 6. Integrasi di Code (ERMv3)</h2>
 
     <h3>Cek License di Controller</h3>
     <pre><code>use LucaLongo\LaravelLicensingClient\Facades\LaravelLicensingClient;
@@ -1228,7 +1385,7 @@ public function someMethod(LicenseStateStore $store) {
 }</code></pre>
 
     <!-- ============================================================ -->
-    <h2 id="dev-fingerprint"><span class="badge badge-dev">DEV</span> Fingerprint Generator</h2>
+    <h2 id="dev-fingerprint"><span class="badge badge-dev">DEV</span> 7. Fingerprint Generator</h2>
 
     <p><strong>HardenedFingerprintGenerator</strong> menggabungkan multiple sources:</p>
 
@@ -1277,7 +1434,7 @@ public function someMethod(LicenseStateStore $store) {
     <p>Server menyimpan metadata di <code>license_usages.meta</code> (JSON column) dan kemudian event listener <code>SyncUsageToInstallation</code> meng-copy ke <code>license_installations</code> untuk dibaca admin di UI.</p>
 
     <!-- ============================================================ -->
-    <h2 id="dev-heartbeat"><span class="badge badge-dev">DEV</span> Heartbeat Setup (Backend &amp; Frontend)</h2>
+    <h2 id="dev-heartbeat"><span class="badge badge-dev">DEV</span> 8. Heartbeat &amp; Cron Setup (Backend &amp; Frontend)</h2>
 
     <p>Heartbeat adalah mekanisme verifikasi berkala antara client (ERMv3) dan server (Gemilang). Sistem berlapis dua: <strong>backend scheduler</strong> (server-side cron) untuk verifikasi tanpa user, dan <strong>frontend poller</strong> (browser-side JS) untuk responsiveness UI.</p>
 
@@ -1715,7 +1872,7 @@ WHERE li.status = 'active'
 ORDER BY delay DESC;</code></pre>
 
     <!-- ============================================================ -->
-    <h2 id="dev-debug"><span class="badge badge-dev">DEV</span> Debugging</h2>
+    <h2 id="dev-debug"><span class="badge badge-dev">DEV</span> 9. Debugging</h2>
 
     <h3>Artisan Commands ERMv3</h3>
     <pre><code># Cek state license + token + validation
@@ -1811,6 +1968,21 @@ grep "Licensing\|Public key\|fingerprint" storage/logs/laravel.log | tail -50</c
         <li>Aktivasi ulang dengan kunci yang sama</li>
       </ol>
       <p>Fingerprint baru akan generate otomatis dari server baru, dan slot lama bisa dipakai server baru.</p>
+    </details>
+
+    <details>
+      <summary>Suspicious Events itu apa? Kapan muncul?</summary>
+      <p>Catatan otomatis dari Gemilang setiap kali ada percobaan akses API lisensi yang gagal dengan kode error security-relevan. Tidak ada admin yang menulisnya manual — middleware <code>RecordSuspiciousLicensingEvent</code> menangkap semua response 4xx dari endpoint <code>/api/licensing/v1/*</code> dan mencatat ke tabel <code>license_logs_suspicious</code>.</p>
+      <p>Jenis event yang ditangkap:</p>
+      <ul>
+        <li><strong>fingerprint_mismatch</strong> — license valid, tapi fingerprint device tidak terdaftar (clone aplikasi, ganti hardware)</li>
+        <li><strong>invalid_key</strong> — kunci tidak ada di database (typo, kunci palsu)</li>
+        <li><strong>replay_attack</strong> — nonce sudah dipakai (indikator penyadapan + replay)</li>
+        <li><strong>seat_limit_exceeded</strong> — semua slot terpakai, masih coba aktivasi</li>
+        <li><strong>revoked_attempt</strong> — license suspended/cancelled tapi masih ada request masuk</li>
+        <li><strong>blacklisted</strong> — fingerprint masuk daftar hitam admin</li>
+      </ul>
+      <p>Detail lengkap di <a href="#admin-suspicious">section 8 panduan admin</a>.</p>
     </details>
 
     <h3>Untuk Admin</h3>
