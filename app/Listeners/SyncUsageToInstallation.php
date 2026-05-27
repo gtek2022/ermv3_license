@@ -118,12 +118,18 @@ class SyncUsageToInstallation
             ->where('fingerprint', $usage->usage_fingerprint)
             ->first();
 
-        // If the row doesn't exist yet (e.g. activation predates this listener),
-        // create one on the fly so the dashboard reflects reality.
-        if (! $installation) {
-            $meta = $this->normalizeMeta($usage->meta);
+        // Heartbeat menyertakan fresh metadata via 'data' field di payload yang
+        // disimpan oleh package ke meta.client_data. Kita extract supaya
+        // domain/hostname/IP/version selalu reflect kondisi terkini client.
+        $rawUsageMeta = $this->normalizeMeta($usage->meta);
+        $clientData   = $rawUsageMeta['client_data'] ?? [];
+        // Format dari client: { client_type, name, user_agent, meta: {...} }
+        // Inner 'meta' dari payload berisi hostname/domain/etc.
+        $clientMeta = (is_array($clientData) ? ($clientData['meta'] ?? []) : []);
+        $appCode    = $clientData['client_type'] ?? $rawUsageMeta['app_code'] ?? 'ermv3';
 
-            $appCode = $usage->client_type ?? $meta['app_code'] ?? $meta['client_type'] ?? 'ermv3';
+        if (! $installation) {
+            // Activation predates this listener — bootstrap row from heartbeat data
             $licenseApp = LicenseApp::where('license_company_id', $licenseCompany->id)
                 ->where('app_code', $appCode)
                 ->first()
@@ -135,23 +141,37 @@ class SyncUsageToInstallation
                 'license_company_id'  => $licenseCompany->id,
                 'app_code'            => $appCode,
                 'fingerprint'         => $usage->usage_fingerprint,
-                'hostname'            => $meta['hostname']    ?? $usage->name ?? null,
-                'domain'              => $meta['domain']      ?? null,
-                'ip_address'          => $meta['server_ip']   ?? $usage->ip ?? null,
-                'app_version'         => $meta['app_version'] ?? null,
+                'hostname'            => $clientMeta['hostname']    ?? $usage->name ?? null,
+                'domain'              => $clientMeta['domain']      ?? null,
+                'ip_address'          => $clientMeta['server_ip']   ?? $usage->ip ?? null,
+                'app_version'         => $clientMeta['app_version'] ?? null,
                 'status'              => 'active',
                 'first_verified_at'   => $usage->registered_at ?? now(),
                 'last_heartbeat_at'   => $usage->last_seen_at ?? now(),
-                'meta'                => $meta,
+                'meta'                => $clientMeta,
             ]);
         } else {
-            $installation->update([
+            // Refresh fields yang bisa berubah di client (domain, IP, version, dll).
+            // Hostname dan fingerprint tidak berubah (sudah jadi part of fingerprint).
+            $updates = [
                 'last_heartbeat_at' => $usage->last_seen_at ?? now(),
                 'status'            => $installation->status === 'revoked' ? 'revoked' : 'active',
-            ]);
+            ];
+
+            // Hanya update kalau client kirim data fresh (jangan timpa null kalau
+            // heartbeat tanpa metadata seperti dari endpoint legacy).
+            if (! empty($clientMeta)) {
+                if (! empty($clientMeta['domain']))      $updates['domain']      = $clientMeta['domain'];
+                if (! empty($clientMeta['hostname']))    $updates['hostname']    = $clientMeta['hostname'];
+                if (! empty($clientMeta['server_ip']))   $updates['ip_address']  = $clientMeta['server_ip'];
+                if (! empty($clientMeta['app_version'])) $updates['app_version'] = $clientMeta['app_version'];
+                $updates['meta'] = array_merge((array) $installation->meta, $clientMeta);
+            }
+
+            $installation->update($updates);
         }
 
-        // Append a heartbeat log row so admin can see history
+        // Append heartbeat log row so admin can see history
         LicenseLogsHeartbeat::create([
             'installation_id'     => $installation->id,
             'license_company_id'  => $licenseCompany->id,
