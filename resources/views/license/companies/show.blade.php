@@ -580,7 +580,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td><span class="badge badge-info">{{ $hb->app_code }}</span></td>
                         <td style="font-size:.75rem;color:#64748b;">{{ $hb->ip_address ?? '—' }}</td>
                         <td style="font-size:.72rem;color:#64748b;">{{ $hb->app_version ?? '—' }}</td>
-                        <td><span class="badge {{ $hb->status === 'verified' ? 'badge-success' : 'badge-danger' }}">{{ $hb->status }}</span></td>
+                        @php
+                            $hbOk = in_array($hb->status, ['success', 'verified', 'ok'], true);
+                        @endphp
+                        <td><span class="badge {{ $hbOk ? 'badge-success' : 'badge-danger' }}">{{ $hb->status }}</span></td>
                         <td style="font-size:.72rem;color:#94a3b8;">{{ $hb->heartbeat_at->diffForHumans() }}</td>
                     </tr>
                     @empty

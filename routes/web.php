@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{hash}/revoke', [InstallationController::class, 'revoke'])->name('revoke');
         Route::post('/{hash}/blacklist', [InstallationController::class, 'blacklist'])->name('blacklist');
         Route::post('/{hash}/suspicious/{eventId}/review', [InstallationController::class, 'reviewSuspicious'])->name('suspicious.review');
+        Route::post('/{hash}/suspicious/ignore-all', [InstallationController::class, 'ignoreAllSuspicious'])->name('suspicious.ignore-all');
     });
 
     // ── Users ─────────────────────────────────────────────────────────────────

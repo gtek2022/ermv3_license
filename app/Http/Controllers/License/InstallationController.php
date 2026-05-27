@@ -96,6 +96,38 @@ class InstallationController extends Controller
         return back()->with('success', 'Event marked as reviewed.');
     }
 
+    /**
+     * Mark all unreviewed suspicious events for this installation as reviewed.
+     * Used by "Ignore All" button — admin telah inspect dan menganggapnya benign.
+     */
+    public function ignoreAllSuspicious(string $hash): RedirectResponse
+    {
+        $installation = $this->findOrFail($hash);
+
+        $count = LicenseLogsSuspicious::where('installation_id', $installation->id)
+            ->where('is_reviewed', false)
+            ->update([
+                'is_reviewed' => true,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+        // Also ignore events tied to this license_company but missing installation_id
+        // (e.g. invalid_key attempts where fingerprint didn't match any install)
+        if ($installation->license_company_id) {
+            $count += LicenseLogsSuspicious::where('license_company_id', $installation->license_company_id)
+                ->whereNull('installation_id')
+                ->where('is_reviewed', false)
+                ->update([
+                    'is_reviewed' => true,
+                    'reviewed_by' => auth()->id(),
+                    'reviewed_at' => now(),
+                ]);
+        }
+
+        return back()->with('success', "Ignored {$count} suspicious event(s).");
+    }
+
     private function findOrFail(string $hash): LicenseInstallation
     {
         $ids = Hashids::decode($hash);

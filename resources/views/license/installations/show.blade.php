@@ -41,25 +41,42 @@
     </div>
 
     <div class="card">
-        <div class="card-header"><span class="card-title">Suspicious Events ({{ $suspicious->count() }})</span></div>
+        <div class="card-header">
+            <span class="card-title">Suspicious Events ({{ $suspicious->count() }})</span>
+            @php $unreviewedCount = $suspicious->where('is_reviewed', false)->count(); @endphp
+            @if($unreviewedCount > 0)
+            <form method="POST" action="{{ route('license.installations.suspicious.ignore-all', $hash) }}"
+                  data-confirm="Tandai semua {{ $unreviewedCount }} event sebagai sudah ditinjau? Card merah di dashboard akan hilang."
+                  data-confirm-type="info"
+                  data-confirm-title="Ignore All Suspicious"
+                  data-confirm-ok="Ya, Ignore Semua"
+                  style="margin:0;">
+                @csrf
+                <button class="btn btn-secondary btn-sm" type="submit">Ignore All ({{ $unreviewedCount }})</button>
+            </form>
+            @endif
+        </div>
         <div class="card-body" style="padding:0;">
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>Event</th><th>Severity</th><th>Time</th><th></th></tr></thead>
+                    <thead><tr><th>Event</th><th>Severity</th><th>Time</th><th style="text-align:right;">Actions</th></tr></thead>
                     <tbody>
                         @forelse($suspicious as $ev)
-                        <tr>
+                        <tr style="{{ $ev->is_reviewed ? 'opacity:.55;' : '' }}">
                             <td style="font-size:.75rem;">{{ $ev->event_type }}</td>
                             <td><span class="badge {{ $ev->severity === 'critical' ? 'badge-danger' : 'badge-warning' }}">{{ $ev->severity }}</span></td>
                             <td style="font-size:.72rem;color:#94a3b8;">{{ $ev->occurred_at->diffForHumans() }}</td>
-                            <td>
+                            <td style="text-align:right;">
                                 @if(!$ev->is_reviewed)
-                                <form method="POST" action="{{ route('license.installations.suspicious.review', [$hash, $ev->id]) }}">
-                                    @csrf
-                                    <button class="btn btn-secondary btn-sm">Review</button>
-                                </form>
+                                <div style="display:inline-flex;gap:.35rem;">
+                                    <form method="POST" action="{{ route('license.installations.suspicious.review', [$hash, $ev->id]) }}" style="margin:0;">
+                                        @csrf
+                                        <button class="btn btn-secondary btn-sm" type="submit"
+                                                title="Tandai sudah ditinjau (akan tetap tersimpan untuk audit)">Ignore</button>
+                                    </form>
+                                </div>
                                 @else
-                                <span style="font-size:.7rem;color:#94a3b8;">Reviewed</span>
+                                <span class="badge badge-secondary" style="font-size:.62rem;">reviewed</span>
                                 @endif
                             </td>
                         </tr>
@@ -81,8 +98,11 @@
                 <thead><tr><th>Status</th><th>IP</th><th>Version</th><th>Config Ver</th><th>Violations</th><th>Time</th></tr></thead>
                 <tbody>
                     @forelse($heartbeats as $hb)
+                    @php
+                        $hbOk = in_array($hb->status, ['success', 'verified', 'ok'], true);
+                    @endphp
                     <tr>
-                        <td><span class="badge {{ $hb->status === 'verified' ? 'badge-success' : 'badge-danger' }}">{{ $hb->status }}</span></td>
+                        <td><span class="badge {{ $hbOk ? 'badge-success' : 'badge-danger' }}">{{ $hb->status }}</span></td>
                         <td style="font-size:.75rem;color:#64748b;">{{ $hb->ip_address ?? '—' }}</td>
                         <td style="font-size:.75rem;">{{ $hb->app_version ?? '—' }}</td>
                         <td style="font-size:.72rem;color:#64748b;">{{ $hb->config_version ?? '—' }}</td>
