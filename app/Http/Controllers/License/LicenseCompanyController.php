@@ -341,24 +341,47 @@ class LicenseCompanyController extends Controller
     }
 
     public function updatePolicy(Request $request, string $hash): RedirectResponse
-    {        $data = $request->validate([
+    {
+        $data = $request->validate([
             'heartbeat_tolerance' => 'required|integer|min:1|max:20',
             'warning_days'        => 'required|integer|min:1|max:30',
         ]);
 
-        // Store policy overrides in master_configs scoped to this license
-        // We use the license's id as a reference in app_configs
         $license = $this->findOrFail($hash);
 
-        // Update or create per-license policy in master_app_configs
-        foreach ($data as $key => $value) {
-            \App\Models\MasterAppConfig::updateOrCreate(
-                ['app_code' => 'license_' . $license->id, 'config_key' => $key, 'config_scope' => 'global'],
-                ['config_value' => (string) $value, 'config_type' => 'integer', 'updated_by' => auth()->id()]
-            );
+        // 1. Simpan policy ke license_companies.meta supaya admin UI bisa
+        //    menampilkan kembali nilai yang sudah diset.
+        $meta = (array) ($license->meta ?? []);
+        $meta['policy'] = [
+            'heartbeat_tolerance' => (int) $data['heartbeat_tolerance'],
+            'warning_days'        => (int) $data['warning_days'],
+        ];
+        $license->update([
+            'meta'       => $meta,
+            'updated_by' => auth()->id(),
+        ]);
+
+        // 2. Sync ke package License.meta supaya LicensePolicyController bisa
+        //    baca dari sana saat ermv3/pds polling /api/licensing/v1/policy.
+        try {
+            $pkg = License::where('key_hash', $license->license_key_hash)->first();
+            if ($pkg) {
+                $pkgMeta = $this->normalizeMeta($pkg->meta);
+                $pkgMeta['policy'] = $meta['policy'];
+                $pkg->update(['meta' => $pkgMeta]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to sync policy to package License: ' . $e->getMessage());
         }
 
-        return back()->with('success', 'Policy updated.');
+        LicenseLogsAudit::record('policy_updated', 'license_company', $license->id, [
+            'new' => $meta['policy'],
+        ]);
+
+        return back()->with('success',
+            "Policy disimpan: tolerance={$data['heartbeat_tolerance']}, warning_days={$data['warning_days']}. "
+            . 'Client akan menerapkan policy baru pada heartbeat berikutnya.'
+        );
     }
 
     /**

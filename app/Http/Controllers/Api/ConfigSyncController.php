@@ -202,23 +202,35 @@ class ConfigSyncController extends Controller
 
     private function buildEnforcementPolicy(int $licenseId): array
     {
-        // Per-license overrides stored in master_app_configs with app_code = 'license_{id}'
-        $overrideScope = 'license_' . $licenseId;
+        // 1. Per-license override (paling spesifik)
+        //    Disimpan oleh admin via /licenses/{hash}/policy form di
+        //    license_companies.meta.policy.{heartbeat_tolerance, warning_days}
+        $licenseMeta = \App\Models\LicenseCompany::find($licenseId)?->meta ?? [];
+        $perLicense  = $licenseMeta['policy'] ?? [];
 
-        $get = fn (string $key, mixed $default) => MasterAppConfig::getForApp($overrideScope, $key)
-            ?? MasterConfig::get($key, $default);
+        // 2. Global default dari master_configs
+        $get = fn (string $key, mixed $default) => MasterConfig::get($key, $default);
+
+        // Merge: per-license override > global config > hard-coded fallback.
+        // Note: form admin pakai key 'heartbeat_tolerance' tapi response client
+        // pakai 'heartbeat_retry_limit' (kompatibilitas dengan client legacy).
+        $tolerance = $perLicense['heartbeat_tolerance']
+            ?? $get('heartbeat_retry_limit', 3);
+
+        $warnDays = $perLicense['warning_days']
+            ?? $get('warning_days_before_lockout', 3);
 
         return [
-            'heartbeat_interval'       => (int) $get('heartbeat_interval', 3600),
-            'heartbeat_retry_limit'    => (int) $get('heartbeat_retry_limit', 3),
-            'warning_days_before_lockout' => (int) $get('warning_days_before_lockout', 3),
-            'grace_period_days'        => (int) $get('grace_period_days', 7),
-            'warning_banner_message'   => $get('warning_banner_message', 'License verification failed.'),
-            'lock_modal_message'       => $get('lock_modal_message', 'License verification required.'),
-            'force_revalidation'       => (bool) $get('force_revalidation', false),
-            'maintenance_mode'         => (bool) $get('maintenance_mode', false),
-            'maintenance_message'      => $get('maintenance_message', ''),
-            'minimum_app_version'      => $get('minimum_app_version', '0.0.0'),
+            'heartbeat_interval'          => (int) $get('heartbeat_interval', 3600),
+            'heartbeat_retry_limit'       => (int) $tolerance,
+            'warning_days_before_lockout' => (int) $warnDays,
+            'grace_period_days'           => (int) $get('grace_period_days', 7),
+            'warning_banner_message'      => $get('warning_banner_message', 'License verification failed.'),
+            'lock_modal_message'          => $get('lock_modal_message', 'License verification required.'),
+            'force_revalidation'          => (bool) $get('force_revalidation', false),
+            'maintenance_mode'            => (bool) $get('maintenance_mode', false),
+            'maintenance_message'         => $get('maintenance_message', ''),
+            'minimum_app_version'         => $get('minimum_app_version', '0.0.0'),
         ];
     }
 

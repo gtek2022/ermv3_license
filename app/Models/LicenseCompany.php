@@ -14,7 +14,7 @@ class LicenseCompany extends Model
     protected $fillable = [
         'company_id', 'license_key', 'license_key_hash',
         'status', 'label', 'activated_at', 'expires_at',
-        'max_installations', 'notes',
+        'max_installations', 'notes', 'meta',
         'created_by', 'updated_by',
     ];
 
@@ -22,6 +22,7 @@ class LicenseCompany extends Model
         'activated_at'     => 'datetime',
         'expires_at'       => 'datetime',
         'max_installations' => 'integer',
+        'meta'             => 'array',
     ];
 
     public function company()

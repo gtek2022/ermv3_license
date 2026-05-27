@@ -136,18 +136,36 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Heartbeat Policy Override</span></div>
         <div class="card-body">
-            <p style="font-size:.78rem;color:#64748b;margin-bottom:1rem;">Override server defaults for this license. Leave at defaults to use global config.</p>
+            <p style="font-size:.78rem;color:#64748b;margin-bottom:1rem;">
+                Override server defaults untuk lisensi ini. Kosongkan/biarkan default untuk pakai konfigurasi global gemilang.
+                Perubahan langsung berlaku saat heartbeat berikutnya.
+            </p>
+            @php
+                $policy = $license->meta['policy'] ?? [];
+                $tolerance = $policy['heartbeat_tolerance'] ?? 3;
+                $warnDays  = $policy['warning_days'] ?? 3;
+                $hasOverride = isset($license->meta['policy']);
+            @endphp
+
+            @if($hasOverride)
+                <div style="background:#eff6ff;border-left:3px solid #29abe2;padding:.5rem .75rem;margin-bottom:.85rem;font-size:.72rem;color:#1e40af;border-radius:4px;">
+                    <strong>✓ Override aktif</strong> — license ini pakai nilai custom, bukan default global.
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('license.companies.policy.update', $hash) }}">
                 @csrf
                 <div class="form-group">
                     <label class="form-label">Failure Tolerance</label>
-                    <input type="number" name="heartbeat_tolerance" class="form-control" value="3" min="1" max="20">
-                    <div style="font-size:.68rem;color:#94a3b8;margin-top:.2rem;">Failures before warning banner</div>
+                    <input type="number" name="heartbeat_tolerance" class="form-control"
+                           value="{{ old('heartbeat_tolerance', $tolerance) }}" min="1" max="20" required>
+                    <div style="font-size:.68rem;color:#94a3b8;margin-top:.2rem;">Failures berturut-turut sebelum banner warning muncul di client</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Warning Days</label>
-                    <input type="number" name="warning_days" class="form-control" value="3" min="1" max="30">
-                    <div style="font-size:.68rem;color:#94a3b8;margin-top:.2rem;">Days until lockout modal</div>
+                    <input type="number" name="warning_days" class="form-control"
+                           value="{{ old('warning_days', $warnDays) }}" min="1" max="30" required>
+                    <div style="font-size:.68rem;color:#94a3b8;margin-top:.2rem;">Hari sejak warning sampai hard lockout modal</div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-sm">Save Policy</button>
             </form>

@@ -54,13 +54,17 @@ class LicensePolicyController extends Controller
             ], 403);
         }
 
-        // Policy values can be overridden per-license via meta.policy.*
-        $meta = $license->meta ?? [];
+        // Policy values can be overridden per-license via:
+        //   1. license_companies.meta.policy (preferred — admin form di gemilang)
+        //   2. package licenses.meta.policy (sync target)
+        //   3. global config defaults (fallback)
+        $licenseCompany = \App\Models\LicenseCompany::where('license_key_hash', $license->key_hash)->first();
+        $perLicense = ($licenseCompany?->meta['policy'] ?? null) ?? ((array) $license->meta)['policy'] ?? [];
 
-        $heartbeatTolerance = (int) ($meta['policy']['heartbeat_tolerance']
+        $heartbeatTolerance = (int) ($perLicense['heartbeat_tolerance']
             ?? config('licensing-policy.heartbeat_tolerance', 3));
 
-        $warningDays = (int) ($meta['policy']['warning_days']
+        $warningDays = (int) ($perLicense['warning_days']
             ?? config('licensing-policy.warning_days', 3));
 
         return response()->json([
