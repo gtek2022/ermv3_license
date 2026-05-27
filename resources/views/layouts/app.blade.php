@@ -828,8 +828,11 @@
             confirmBtn.className = 'btn ' + (_btnColors[type] || 'btn-primary');
             confirmBtn.textContent = confirmText;
             confirmBtn.onclick = function() {
+                // Snapshot the callback BEFORE close() — close() nullifies _cb,
+                // and without this the onConfirm handler never fires.
+                var cb = _cb;
                 close();
-                if (_cb) _cb();
+                if (cb) cb();
             };
             actions.appendChild(confirmBtn);
 
