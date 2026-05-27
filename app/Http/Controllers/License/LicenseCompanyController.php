@@ -133,6 +133,17 @@ class LicenseCompanyController extends Controller
     {
         $license = $this->findOrFail($hash);
         $license->update(['status' => 'suspended', 'updated_by' => auth()->id()]);
+
+        // Sync to package License so heartbeat endpoint will reject it.
+        try {
+            $pkg = License::where('key_hash', $license->license_key_hash)->first();
+            if ($pkg) {
+                $pkg->update(['status' => 'suspended']);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to sync suspend to package License: ' . $e->getMessage());
+        }
+
         LicenseLogsAudit::record('suspended', 'license_company', $license->id);
         return back()->with('success', 'License suspended.');
     }
@@ -141,16 +152,68 @@ class LicenseCompanyController extends Controller
     {
         $license = $this->findOrFail($hash);
         $license->update(['status' => 'active', 'updated_by' => auth()->id()]);
+
+        // Sync to package License so heartbeat works again.
+        try {
+            $pkg = License::where('key_hash', $license->license_key_hash)->first();
+            if ($pkg) {
+                $pkg->update(['status' => 'active']);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to sync reinstate to package License: ' . $e->getMessage());
+        }
+
         LicenseLogsAudit::record('activated', 'license_company', $license->id);
-        return back()->with('success', 'License reinstated.');
+        return back()->with('success', 'License reinstated. Client will resume on next heartbeat.');
     }
 
+    /**
+     * Cancel a license. The client will detect this on next heartbeat (HTTP 423),
+     * enter "warning" state with banner, then "lockout" → /license/install after
+     * the configured warning_days. All active installations are also revoked
+     * so the seat is freed up — when admin reinstates and the client re-applies,
+     * activation can proceed cleanly without USAGE_LIMIT_REACHED.
+     */
     public function cancel(string $hash): RedirectResponse
     {
         $license = $this->findOrFail($hash);
+
         $license->update(['status' => 'cancelled', 'updated_by' => auth()->id()]);
-        LicenseLogsAudit::record('cancelled', 'license_company', $license->id);
-        return back()->with('success', 'License cancelled.');
+
+        // Sync to package License so heartbeat returns SUSPENDED_LICENSE (423).
+        $revokedCount = 0;
+        try {
+            $pkg = License::where('key_hash', $license->license_key_hash)->first();
+            if ($pkg) {
+                $pkg->update(['status' => 'cancelled']);
+                // Hard-delete usages so the seat is freed for re-activation later.
+                // Soft-revoke leaves (license_id, usage_fingerprint) unique-index
+                // collision which blocks a fresh activation.
+                $revokedCount = $pkg->usages()->delete();
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to sync cancel to package License: ' . $e->getMessage());
+        }
+
+        // Also mark our LicenseInstallation rows as revoked (audit trail kept)
+        foreach ($license->activeInstallations as $installation) {
+            $installation->update([
+                'status'        => 'revoked',
+                'revoked_at'    => now(),
+                'revoke_reason' => 'license_cancelled',
+            ]);
+        }
+
+        LicenseLogsAudit::record('cancelled', 'license_company', $license->id, [
+            'revoked_usages' => $revokedCount,
+        ]);
+
+        $msg = 'License cancelled.';
+        if ($revokedCount > 0) {
+            $msg .= " {$revokedCount} aktif install di-revoke. Client akan masuk warning lalu lockout pada heartbeat berikutnya.";
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function renew(Request $request, string $hash): RedirectResponse
