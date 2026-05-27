@@ -284,7 +284,12 @@
                                 }
                             @endphp
                             <tr class="{{ $isStale ? 'hb-stale-row' : '' }}">
-                                <td style="font-size:.75rem;font-weight:500;">{{ $inst->hostname ?? $inst->domain ?? '—' }}</td>
+                                <td style="font-size:.75rem;font-weight:500;">
+                                    {{ $inst->domain ?? $inst->hostname ?? '—' }}
+                                    @if($inst->domain && $inst->hostname && $inst->domain !== $inst->hostname)
+                                        <div style="font-size:.65rem;color:#94a3b8;font-weight:400;">{{ $inst->hostname }}</div>
+                                    @endif
+                                </td>
                                 <td><span class="badge badge-info">{{ $inst->app_code }}</span></td>
                                 <td style="font-size:.72rem;color:#64748b;">{{ $inst->last_heartbeat_at?->diffForHumans() ?? '—' }}</td>
                                 <td
@@ -331,6 +336,12 @@
                         <div class="activity-text">
                             Heartbeat from
                             <strong>{{ optional($act->licenseCompany)->company?->name ?? $act->app_code ?? '—' }}</strong>
+                            @if($act->app_code)
+                                <span class="badge badge-info" style="font-size:.6rem;padding:.1rem .35rem;margin-left:.25rem;vertical-align:middle;">{{ $act->app_code }}</span>
+                            @endif
+                            @if($act->domain)
+                                <span style="color:#94a3b8;font-size:.7rem;">· {{ $act->domain }}</span>
+                            @endif
                             @if($act->status !== 'success')
                                 <span style="color:#dc2626;">— {{ $act->failure_reason ?? 'failed' }}</span>
                             @endif
