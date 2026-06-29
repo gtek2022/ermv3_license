@@ -101,28 +101,6 @@ class HeartbeatMonitorController extends Controller
         // or carrying a failed/rejected recent heartbeat.
         $attention = $installations->whereIn('health', ['expired', 'late'])->values();
 
-        // Recent heartbeat log feed (includes failures + reasons).
-        $recent = LicenseLogsHeartbeat::with('licenseCompany.company')
-            ->orderByDesc('heartbeat_at')
-            ->limit(40)
-            ->get()
-            ->map(function ($h) {
-                $ok = in_array($h->status, ['success', 'verified'], true);
-
-                return [
-                    'company'      => optional(optional($h->licenseCompany)->company)->name
-                                      ?? optional($h->licenseCompany)->label
-                                      ?? '—',
-                    'app_code'     => $h->app_code,
-                    'ip_address'   => $h->ip_address,
-                    'app_version'  => $h->app_version,
-                    'status'       => $h->status,
-                    'ok'           => $ok,
-                    'reason'       => $h->failure_reason,
-                    'at'           => $h->heartbeat_at?->toIso8601String(),
-                ];
-            });
-
         return [
             'now'                 => now()->toIso8601String(),
             'interval_seconds'    => $interval,
@@ -133,8 +111,71 @@ class HeartbeatMonitorController extends Controller
             'unreviewed_suspicious' => LicenseLogsSuspicious::where('is_reviewed', false)->count(),
             'installations'       => $installations->values(),
             'attention'           => $attention,
-            'recent'              => $recent,
         ];
+    }
+
+    /**
+     * GET /heartbeat-monitor/logs
+     * Server-side paginated heartbeat log feed (browse the full history), with
+     * an OK/failed filter and free-text search. Separate from the live report()
+     * poll so the table can page through everything without re-loading the
+     * whole dashboard.
+     */
+    public function logs(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $perPage = min(100, max(5, (int) $request->input('per_page', 20)));
+        $filter  = (string) $request->input('status', 'all');
+        $search  = trim((string) $request->input('search', ''));
+
+        $query = LicenseLogsHeartbeat::with('licenseCompany.company')
+            ->orderByDesc('heartbeat_at');
+
+        if ($filter === 'ok') {
+            $query->whereIn('status', ['success', 'verified']);
+        } elseif ($filter === 'failed') {
+            $query->whereNotIn('status', ['success', 'verified']);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('app_code', 'like', "%{$search}%")
+                  ->orWhere('ip_address', 'like', "%{$search}%")
+                  ->orWhere('domain', 'like', "%{$search}%")
+                  ->orWhere('failure_reason', 'like', "%{$search}%")
+                  ->orWhereHas('licenseCompany.company', function ($c) use ($search) {
+                      $c->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $page = $query->paginate($perPage);
+
+        $rows = collect($page->items())->map(function ($h) {
+            return [
+                'company'     => optional(optional($h->licenseCompany)->company)->name
+                                 ?? optional($h->licenseCompany)->label ?? '—',
+                'app_code'    => $h->app_code,
+                'ip_address'  => $h->ip_address,
+                'app_version' => $h->app_version,
+                'status'      => $h->status,
+                'ok'          => in_array($h->status, ['success', 'verified'], true),
+                'reason'      => $h->failure_reason,
+                'at'          => $h->heartbeat_at?->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'success'    => true,
+            'data'       => $rows,
+            'pagination' => [
+                'current_page' => $page->currentPage(),
+                'last_page'    => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'from'         => $page->firstItem(),
+                'to'           => $page->lastItem(),
+            ],
+        ]);
     }
 
     // ── Per-installation diagnosis (shared by Monitor + License page) ─────────

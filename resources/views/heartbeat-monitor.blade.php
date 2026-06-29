@@ -78,7 +78,15 @@
 </div>
 
 <div class="hm-panel">
-  <h2>Log Heartbeat Terbaru <span class="muted">termasuk kegagalan + alasannya</span></h2>
+  <h2>Log Heartbeat <span class="muted">riwayat lengkap — termasuk kegagalan + alasannya</span></h2>
+  <div class="hm-bar" style="padding:.7rem .9rem 0;margin:0;">
+    <div class="hm-tabs" id="hmLogTabs">
+      <span class="hm-tab active" data-s="all">Semua</span>
+      <span class="hm-tab" data-s="ok">Sukses</span>
+      <span class="hm-tab" data-s="failed">Gagal</span>
+    </div>
+    <input type="text" class="hm-search" id="hmLogSearch" placeholder="Cari perusahaan / app / IP / domain / alasan…">
+  </div>
   <div id="hmRecentWrap"></div>
   <div class="hm-pager" id="hmRecentPager"></div>
 </div>
@@ -87,8 +95,10 @@
 
 <script>
   const HM_DATA_URL = @json(route('heartbeat.monitor.data'));
+  const HM_LOGS_URL = @json(route('heartbeat.monitor.logs'));
   let hm = @json($report);
-  const state = { filter: 'all', search: '', instPage: 1, recentPage: 1, perPage: 12, recentPer: 15 };
+  const state = { filter: 'all', search: '', instPage: 1, perPage: 12 };
+  const logs = { page: 1, status: 'all', search: '', lastPage: 1, total: 0 };
 
   const esc = s => (s===null||s===undefined)?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   function rel(iso){ if(!iso) return '—'; const d=new Date(iso),n=new Date(); let s=Math.round((n-d)/1000); if(s<0)s=0;
@@ -185,33 +195,54 @@
     </tr>`).join('')}</tbody></table>`;
   }
 
-  function renderRecent() {
-    const rows = hm.recent || [];
-    state.recentPage = renderPager('hmRecentPager', rows.length, state.recentPage, state.recentPer, 'hmGotoRecent');
-    const start = (state.recentPage - 1) * state.recentPer;
-    const slice = rows.slice(start, start + state.recentPer);
+  async function loadLogs() {
+    const params = new URLSearchParams({ page: logs.page, status: logs.status, search: logs.search, per_page: 20 });
     const el = document.getElementById('hmRecentWrap');
-    if (!slice.length) { el.innerHTML = `<div class="hm-empty">Belum ada log heartbeat.</div>`; return; }
-    el.innerHTML = `<table class="hm"><thead><tr>
-      <th>Waktu</th><th>Perusahaan</th><th>App</th><th>IP</th><th>Status</th><th>Keterangan</th>
-    </tr></thead><tbody>${slice.map(h => `<tr>
-      <td>${rel(h.at)}<div class="mono">${fmt(h.at)}</div></td>
-      <td>${esc(h.company)}</td><td class="mono">${esc(h.app_code)}</td><td class="mono">${esc(h.ip_address||'—')}</td>
-      <td><span class="badge ${h.ok?'b-ok':'b-bad'}">${esc((h.status||'?').toUpperCase())}</span></td>
-      <td>${esc(h.reason||(h.ok?'—':''))}</td>
-    </tr>`).join('')}</tbody></table>`;
+    try {
+      const r = await fetch(`${HM_LOGS_URL}?${params}`, { headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin' });
+      const j = await r.json();
+      const rows = j.data || [];
+      const pg = j.pagination || {};
+      logs.lastPage = pg.last_page || 1;
+      logs.total = pg.total || 0;
+      logs.page = pg.current_page || 1;
+
+      if (!rows.length) { el.innerHTML = `<div class="hm-empty">Tidak ada log yang cocok.</div>`; }
+      else {
+        el.innerHTML = `<table class="hm"><thead><tr>
+          <th>Waktu</th><th>Perusahaan</th><th>App</th><th>IP</th><th>Status</th><th>Keterangan</th>
+        </tr></thead><tbody>${rows.map(h => `<tr>
+          <td>${rel(h.at)}<div class="mono">${fmt(h.at)}</div></td>
+          <td>${esc(h.company)}</td><td class="mono">${esc(h.app_code)}</td><td class="mono">${esc(h.ip_address||'—')}</td>
+          <td><span class="badge ${h.ok?'b-ok':'b-bad'}">${esc((h.status||'?').toUpperCase())}</span></td>
+          <td>${esc(h.reason||(h.ok?'—':''))}</td>
+        </tr>`).join('')}</tbody></table>`;
+      }
+
+      const pager = document.getElementById('hmRecentPager');
+      if (logs.total === 0) { pager.innerHTML = ''; }
+      else {
+        pager.innerHTML = `<span>${pg.from||0}–${pg.to||0} dari ${logs.total} · hal ${logs.page}/${logs.lastPage}</span>
+          <button ${logs.page<=1?'disabled':''} onclick="hmLogGoto(${logs.page-1})">‹</button>
+          <button ${logs.page>=logs.lastPage?'disabled':''} onclick="hmLogGoto(${logs.page+1})">›</button>`;
+      }
+    } catch (e) { el.innerHTML = `<div class="hm-empty">Gagal memuat log.</div>`; }
   }
 
+  window.hmLogGoto = p => { if (p < 1 || p > logs.lastPage) return; logs.page = p; loadLogs(); };
+  window.hmLogFilter = s => { logs.status = s; logs.page = 1;
+    document.querySelectorAll('#hmLogTabs .hm-tab').forEach(t => t.classList.toggle('active', t.dataset.s === s));
+    loadLogs(); };
+
   window.hmGotoInst = p => { state.instPage = p; renderInst(); };
-  window.hmGotoRecent = p => { state.recentPage = p; renderRecent(); };
   window.hmSetFilter = f => {
     state.filter = f; state.instPage = 1;
-    document.querySelectorAll('.hm-tab').forEach(t => t.classList.toggle('active', t.dataset.f === f));
+    document.querySelectorAll('#hmTabs .hm-tab').forEach(t => t.classList.toggle('active', t.dataset.f === f));
     renderInst();
   };
 
   function render() {
-    renderCards(); renderAttention(); renderInst(); renderRecent();
+    renderCards(); renderAttention(); renderInst();
     document.getElementById('hmUpdated').textContent = 'Diperbarui: ' + fmt(hm.now);
   }
 
@@ -221,12 +252,20 @@
       const j = await r.json();
       if (j.success) { hm = j.data; render(); }
     } catch (e) {}
+    loadLogs();
   }
 
   document.getElementById('hmRefresh').addEventListener('click', refresh);
   document.getElementById('hmSearch').addEventListener('input', e => { state.search = e.target.value; state.instPage = 1; renderInst(); });
-  document.querySelectorAll('.hm-tab').forEach(t => t.addEventListener('click', () => hmSetFilter(t.dataset.f)));
+  document.querySelectorAll('#hmTabs .hm-tab').forEach(t => t.addEventListener('click', () => hmSetFilter(t.dataset.f)));
+  document.querySelectorAll('#hmLogTabs .hm-tab').forEach(t => t.addEventListener('click', () => hmLogFilter(t.dataset.s)));
+  let logSearchTimer = null;
+  document.getElementById('hmLogSearch').addEventListener('input', e => {
+    clearTimeout(logSearchTimer);
+    logSearchTimer = setTimeout(() => { logs.search = e.target.value; logs.page = 1; loadLogs(); }, 350);
+  });
   render();
+  loadLogs();
   setInterval(refresh, 20000);
 </script>
 @endsection

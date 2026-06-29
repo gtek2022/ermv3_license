@@ -145,6 +145,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('heartbeat.monitor');
     Route::get('/heartbeat-monitor/data', [\App\Http\Controllers\HeartbeatMonitorController::class, 'data'])
         ->name('heartbeat.monitor.data');
+    Route::get('/heartbeat-monitor/logs', [\App\Http\Controllers\HeartbeatMonitorController::class, 'logs'])
+        ->name('heartbeat.monitor.logs');
     Route::get('/heartbeat-monitor/diagnose/{hash}', [\App\Http\Controllers\HeartbeatMonitorController::class, 'diagnose'])
         ->name('heartbeat.diagnose');
 
