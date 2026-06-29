@@ -140,6 +140,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/system/heartbeat-setup/test', [\App\Http\Controllers\HeartbeatSetupController::class, 'test'])
         ->name('system.heartbeat-setup.test');
 
+    // ── Heartbeat Monitor (central view of all clients) ───────────────────────
+    Route::get('/heartbeat-monitor', [\App\Http\Controllers\HeartbeatMonitorController::class, 'index'])
+        ->name('heartbeat.monitor');
+    Route::get('/heartbeat-monitor/data', [\App\Http\Controllers\HeartbeatMonitorController::class, 'data'])
+        ->name('heartbeat.monitor.data');
+
     // ── Guide / Documentation ──────────────────────────────────────────────────
     Route::get('/guide/lisensi', [\App\Http\Controllers\GuideController::class, 'show'])
         ->name('guide.lisensi');
