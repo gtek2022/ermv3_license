@@ -312,6 +312,7 @@ class HeartbeatMonitorController extends Controller
                 'health'      => $health,
                 'last_heartbeat' => $last?->toIso8601String(),
                 'days_since'  => $daysSince,
+                'client_diagnostics_url' => $this->clientDiagnosticsUrl($inst->domain),
             ],
             'verdict' => $verdict,
             'checks'  => $checks,
@@ -326,6 +327,26 @@ class HeartbeatMonitorController extends Controller
     protected function v(string $level, string $title, string $message, ?string $hint): array
     {
         return compact('level', 'title', 'message', 'hint');
+    }
+
+    /**
+     * Build a deep link to the client's own diagnostics page from its domain.
+     * The client exposes /license/diagnostics unauthenticated (reachable even
+     * when unlicensed), so the admin can jump straight there to see the
+     * client-only signals (token exp, fingerprint, cron liveness).
+     */
+    protected function clientDiagnosticsUrl(?string $domain): ?string
+    {
+        if (! $domain) {
+            return null;
+        }
+
+        $host = trim(preg_replace('#^https?://#i', '', $domain), '/ ');
+        if ($host === '') {
+            return null;
+        }
+
+        return 'https://' . $host . '/license/diagnostics';
     }
 
     /**

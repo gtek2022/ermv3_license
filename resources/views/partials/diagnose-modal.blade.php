@@ -83,6 +83,7 @@
         ${v.hint ? `<div class="h">💡 ${esc(v.hint)}</div>` : ''}
       </div>
       <div class="dgm-meta">${meta}</div>
+      ${inst.client_diagnostics_url ? `<div style="margin:0 0 1rem;"><a href="${esc(inst.client_diagnostics_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .9rem;background:#1a3a6b;color:#fff;border-radius:8px;text-decoration:none;font-size:.8rem;font-weight:600;">🩺 Buka Diagnostics Klien (${esc(inst.app_code||'')}) ↗</a><div style="font-size:.7rem;color:#94a3b8;margin-top:.35rem;">Lihat sinyal yang hanya ada di klien: token exp, fingerprint, status cron.</div></div>` : ''}
       <div>${checks}</div>`;
   }
 
