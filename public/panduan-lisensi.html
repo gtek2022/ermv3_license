@@ -331,7 +331,7 @@
       <a href="#admin-feature">4. Setup Feature</a>
       <a href="#admin-license">5. Terbitkan Lisensi</a>
       <a href="#admin-feature-license">6. Lisensi Per-Fitur (FLK)</a>
-      <a href="#admin-monitor">7. Monitor Instalasi</a>
+      <a href="#admin-monitor">7. Monitor &amp; Diagnose</a>
       <a href="#admin-suspicious">8. Suspicious Events</a>
       <a href="#admin-revoke">9. Revoke / Suspend / Renew</a>
       <a href="#admin-regenerate">10. Regenerate Kunci</a>
@@ -342,6 +342,7 @@
       <a href="#client-aktivasi-fitur">2. Aktivasi Fitur Tambahan</a>
       <a href="#client-status">3. Cek Status Lisensi</a>
       <a href="#client-troubleshoot">4. Troubleshoot</a>
+      <a href="#client-diagnostics">5. Halaman Diagnostics</a>
 
       <a class="section-title">⚙️ Untuk Developer</a>
       <a href="#dev-arsitektur">1. Arsitektur Detail</a>
@@ -777,9 +778,39 @@
     </ol>
 
     <!-- ============================================================ -->
-    <h2 id="admin-monitor"><span class="badge badge-admin">ADMIN</span> 7. Monitor Instalasi</h2>
+    <h2 id="admin-monitor"><span class="badge badge-admin">ADMIN</span> 7. Monitor &amp; Diagnose</h2>
 
-    <p>Halaman detail license menampilkan semua instalasi aktif beserta info lengkap device.</p>
+    <p>Halaman detail license menampilkan semua instalasi aktif beserta info lengkap device. Selain itu kini ada menu <strong>Heartbeat Monitor</strong> (sidebar, di bawah <em>Licenses</em>) untuk memantau <strong>semua</strong> instalasi klien sekaligus dari satu layar.</p>
+
+    <h3>Heartbeat Monitor (pusat) <span style="color:#16a34a;font-weight:700;">BARU</span></h3>
+    <p>URL: <code>/heartbeat-monitor</code>. Memberi tahu instalasi mana yang sehat dan mana yang kemungkinan sudah balik ke halaman aktivasi.</p>
+    <ul>
+      <li><strong>Kartu ringkasan</strong> (klik untuk filter): Total Aktif, Online, Telat, Expired, Heartbeat 24 jam (OK/Gagal), Suspicious.</li>
+      <li><strong>Klasifikasi kesehatan</strong> dihitung dari <code>last_heartbeat_at</code> vs interval &amp; TTL token:
+        <ul>
+          <li><strong>online</strong> — heartbeat dalam ≤1,5× interval</li>
+          <li><strong>late (telat)</strong> — diam melewati itu tapi masih dalam masa token (≤ TTL, masih berlisensi)</li>
+          <li><strong>expired</strong> — diam &gt; TTL token (≈7 hari) → token offline klien kemungkinan sudah kedaluwarsa → klien di halaman aktivasi</li>
+        </ul>
+      </li>
+      <li><strong>Perlu Perhatian</strong> — daftar khusus instalasi telat/expired.</li>
+      <li><strong>Filter</strong> tab (Semua/Online/Telat/Expired) + <strong>pencarian</strong> (perusahaan/domain/IP/app) + <strong>pagination</strong> tabel instalasi.</li>
+    </ul>
+
+    <h3>Tombol Diagnose <span style="color:#16a34a;font-weight:700;">BARU</span></h3>
+    <p>Tersedia di tiap baris Heartbeat Monitor dan di tiap slot instalasi pada halaman <em>Licenses</em> (fungsi sama). Menjawab <strong>kenapa sebuah klien butuh aktivasi ulang</strong>, dari sisi yang hanya diketahui server, berupa verdict + checklist:</p>
+    <ul>
+      <li>Status lisensi di server (suspended/cancelled → refresh ditolak)</li>
+      <li>Masa berlaku lisensi (expired/lifetime)</li>
+      <li>Status instalasi (revoked/blacklisted)</li>
+      <li>Kesegaran heartbeat vs TTL token (diam &gt; TTL → token klien kemungkinan habis)</li>
+      <li>Hasil heartbeat terakhir + alasan kegagalan</li>
+      <li>Slot instalasi penuh (jebakan umum saat pindah server)</li>
+      <li>Event mencurigakan (fingerprint berubah/clone)</li>
+    </ul>
+    <div class="note info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.75rem 1rem;margin:.75rem 0;">
+      <strong>↗ Buka Diagnostics Klien:</strong> modal Diagnose menyertakan tautan langsung ke <code>/license/diagnostics</code> aplikasi klien terkait (dibangun dari domain instalasi). Path ini seragam di semua klien (ermv3, absensi, pds) sehingga referensi server stabil. Pakai untuk melihat sinyal sisi-klien yang tidak diketahui server (token exp, fingerprint, status cron).
+    </div>
 
     <h3>Yang Bisa Dilihat per Instalasi</h3>
     <table>
@@ -801,10 +832,10 @@
       </tbody>
     </table>
 
-    <h3>Section Recent Heartbeats</h3>
-    <p>Tabel di bawah menampilkan 20 heartbeat terakhir. Status:</p>
+    <h3>Log Heartbeat (riwayat lengkap) <span style="color:#16a34a;font-weight:700;">BARU</span></h3>
+    <p>Panel "Log Heartbeat" di Heartbeat Monitor kini memakai <strong>pagination server-side</strong> sehingga seluruh riwayat bisa ditelusuri (bukan hanya 20 terakhir), dengan filter <strong>Semua / Sukses / Gagal</strong> dan pencarian (perusahaan/app/IP/domain/alasan). Status:</p>
     <ul>
-      <li><strong>verified</strong> — heartbeat sukses</li>
+      <li><strong>verified / success</strong> — heartbeat sukses</li>
       <li><strong>failed</strong> — gagal (network, expired, mismatch)</li>
     </ul>
 
@@ -1105,6 +1136,32 @@
         </tr>
       </tbody>
     </table>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2 id="client-diagnostics"><span class="badge badge-shared">CLIENT</span> 5. Halaman Diagnostics</h2>
+
+    <p>Setiap aplikasi klien (ermv3, absensi, pds) punya halaman <strong>Diagnostics</strong> di <code>/license/diagnostics</code> — bisa dibuka <strong>tanpa login</strong> dan walau aplikasi belum/tidak terlisensi (justru saat itulah dibutuhkan). Tujuannya: tahu persis <strong>kenapa aplikasi bisa kembali ke halaman aktivasi</strong> tanpa perlu menelusuri log lewat SSH.</p>
+
+    <h3>Isi Halaman</h3>
+    <ul>
+      <li><strong>Verdict</strong> — prediksi tindakan saat ini (Akses Normal / → Halaman Aktivasi / → Install / Modal Lockout) + penyebab + saran perbaikan.</li>
+      <li><strong>Checklist</strong> (hijau/kuning/merah): kunci lisensi, public key, koneksi ke gemilang, validitas token, masa berlaku token, kecocokan fingerprint, kesehatan heartbeat, dan <strong>liveness cron/scheduler</strong>.</li>
+      <li><strong>Detail token</strong> — terbaca walau sudah kedaluwarsa (decode klaim tanpa verifikasi signature, khusus tampilan): <code>exp</code>, status, <code>force_online_after</code>, lifetime vs berakhir.</li>
+      <li><strong>Riwayat heartbeat</strong> lokal (tiap heartbeat/refresh dicatat + alasan).</li>
+      <li>Tombol <strong>Jalankan Heartbeat</strong> untuk pemulihan segera.</li>
+    </ul>
+
+    <div class="note ok" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem 1rem;margin:.75rem 0;">
+      <strong>Auto-renewal token:</strong> token offline berumur pendek (TTL ≈ 7 hari) — terpisah dari masa berlaku lisensi (lisensi <em>lifetime</em> pun memakai token 7-harian). Klien kini otomatis memperpanjang token pada tiap heartbeat sukses, sehingga selama <strong>cron/scheduler hidup</strong> dan server terjangkau, aplikasi tidak akan balik ke halaman aktivasi. Penyebab paling umum kasus "balik ke aktivasi" adalah cron <code>schedule:run</code> yang mati.
+    </div>
+
+    <div class="note warn" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.75rem 1rem;margin:.75rem 0;">
+      <strong>Catatan PDS:</strong> aplikasi PDS memakai model <em>heartbeat-only</em> (tanpa token offline), jadi tidak ada konsep "token expired". Halaman Diagnostics PDS fokus pada kesehatan heartbeat, error terakhir dari server, dan liveness cron.
+    </div>
+
+    <p>Dari sisi server, admin bisa membuka halaman ini lewat tombol <strong>↗ Klien</strong> di <a href="#admin-monitor">Heartbeat Monitor</a> / modal Diagnose. Verifikasi cepat via CLI di klien: <code>php artisan license:heartbeat</code> dan <code>php artisan license:diagnose</code>.</p>
 
     <hr>
 
