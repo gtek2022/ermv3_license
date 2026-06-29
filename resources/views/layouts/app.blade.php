@@ -671,15 +671,15 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('license.installations.index') }}" class="{{ request()->routeIs('license.installations.*') ? 'active' : '' }}">
-                    <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span>
-                    Installations
-                </a>
-            </li>
-            <li>
                 <a href="{{ route('heartbeat.monitor') }}" class="{{ request()->routeIs('heartbeat.monitor*') ? 'active' : '' }}">
                     <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
                     Heartbeat Monitor
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('license.installations.index') }}" class="{{ request()->routeIs('license.installations.*') ? 'active' : '' }}">
+                    <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span>
+                    Installations
                 </a>
             </li>
             <li>

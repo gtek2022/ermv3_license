@@ -643,6 +643,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         <br>
                         Last seen <strong style="color:#475569;">{{ $u->last_seen_at?->diffForHumans() ?? '—' }}</strong>
                     </div>
+                    @if($inst)
+                    <button type="button" class="btn btn-sm"
+                            style="font-size:.65rem;background:#eff6ff;border:1px solid #29abe2;color:#1a3a6b;margin-bottom:.4rem;"
+                            onclick="openDiagnose('{{ \Vinkla\Hashids\Facades\Hashids::encode($inst->id) }}')">
+                        🩺 Diagnose
+                    </button>
+                    @endif
                     <form method="POST" action="{{ route('license.companies.usage.revoke', [$hash, $u->id]) }}"
                           onsubmit="return confirm('Revoke usage di {{ $m['hostname'] ?? $u->usage_fingerprint }}? Client harus aktivasi ulang.');"
                           style="margin:0;">
@@ -806,5 +813,7 @@ window.__switchSnippetTabLic = function(btn, code) {
     btn.style.background = '#1a3a6b'; btn.style.color = '#fff';
 };
 </script>
+
+@include('partials.diagnose-modal')
 @endsection
 

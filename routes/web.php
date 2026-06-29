@@ -145,6 +145,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('heartbeat.monitor');
     Route::get('/heartbeat-monitor/data', [\App\Http\Controllers\HeartbeatMonitorController::class, 'data'])
         ->name('heartbeat.monitor.data');
+    Route::get('/heartbeat-monitor/diagnose/{hash}', [\App\Http\Controllers\HeartbeatMonitorController::class, 'diagnose'])
+        ->name('heartbeat.diagnose');
 
     // ── Guide / Documentation ──────────────────────────────────────────────────
     Route::get('/guide/lisensi', [\App\Http\Controllers\GuideController::class, 'show'])

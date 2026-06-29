@@ -8,6 +8,7 @@ use App\Models\LicenseLogsSuspicious;
 use App\Models\MasterConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
+use Vinkla\Hashids\Facades\Hashids;
 
 /**
  * Central Heartbeat Monitor — the server-side counterpart to the per-client
@@ -53,6 +54,8 @@ class HeartbeatMonitorController extends Controller
                 $nextInSecs = ($age !== null) ? ($interval - $age) : null;
 
                 return [
+                    'hash'           => Hashids::encode($i->id),
+                    'uuid'           => $i->installation_uuid,
                     'company'        => optional(optional($i->licenseCompany)->company)->name
                                         ?? optional($i->licenseCompany)->label
                                         ?? '—',
@@ -126,11 +129,210 @@ class HeartbeatMonitorController extends Controller
         ];
     }
 
+    // ── Per-installation diagnosis (shared by Monitor + License page) ─────────
+
+    /**
+     * GET /heartbeat-monitor/diagnose/{hash}
+     * Returns the server-side diagnosis for one installation: the most likely
+     * reason that client would need to re-activate, plus a full checklist.
+     */
+    public function diagnose(string $hash): JsonResponse
+    {
+        $ids = Hashids::decode($hash);
+        if (empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Installation tidak ditemukan.'], 404);
+        }
+
+        $inst = LicenseInstallation::with('licenseCompany.company')->find($ids[0]);
+        if (! $inst) {
+            return response()->json(['success' => false, 'message' => 'Installation tidak ditemukan.'], 404);
+        }
+
+        return response()->json(['success' => true, 'data' => $this->diagnoseInstallation($inst)]);
+    }
+
+    /**
+     * Build the diagnosis for a single installation. Looks at the things ONLY
+     * the server knows: license status/expiry, installation revoke/blacklist,
+     * heartbeat freshness vs token TTL, the latest heartbeat result + reason,
+     * slot usage, and suspicious events.
+     */
+    protected function diagnoseInstallation(LicenseInstallation $inst): array
+    {
+        $interval  = (int) MasterConfig::get('licensing.heartbeat_interval', 3600);
+        $ttlDays   = (int) config('licensing.offline_token.ttl_days', 7);
+        $staleSecs = max(120, (int) ($interval * 1.5));
+        $ttlSecs   = max($staleSecs + 60, $ttlDays * 86400);
+
+        $company   = $inst->licenseCompany;
+        $last      = $inst->last_heartbeat_at;
+        $age       = $last ? max(0, now()->getTimestamp() - $last->getTimestamp()) : null;
+        $health    = $this->classify($age, $staleSecs, $ttlSecs);
+        $daysSince = $age !== null ? (int) floor($age / 86400) : null;
+
+        $latest = LicenseLogsHeartbeat::where('installation_id', $inst->id)
+            ->orderByDesc('heartbeat_at')->first();
+
+        $suspicious = LicenseLogsSuspicious::where('installation_id', $inst->id)
+            ->where('is_reviewed', false)->orderByDesc('occurred_at')->get();
+
+        $activeCount = $company
+            ? LicenseInstallation::where('license_company_id', $company->id)->where('status', 'active')->count()
+            : 0;
+        $maxInstalls = (int) ($company->max_installations ?? 0);
+
+        $checks  = [];
+        $verdict = null; // first non-pass becomes the headline cause
+
+        // 1. License status (server-side)
+        $licStatus = $company->status ?? 'unknown';
+        if ($company && in_array($licStatus, ['suspended', 'cancelled'], true)) {
+            $checks[] = $this->c('license_status', 'Status lisensi di server', 'fail',
+                "Lisensi berstatus \"{$licStatus}\". Server menolak refresh token → klien akan terus diminta aktivasi ulang.",
+                'Aktifkan kembali (reinstate) lisensi ini agar klien bisa berfungsi.');
+            $verdict = $verdict ?? $this->v('danger', 'Lisensi di-' . $licStatus . ' di server',
+                "Selama lisensi berstatus \"{$licStatus}\", token tidak akan diperpanjang dan klien akan minta aktivasi ulang.",
+                'Reinstate lisensi di halaman Licenses.');
+        } else {
+            $checks[] = $this->c('license_status', 'Status lisensi di server', 'pass',
+                'Lisensi aktif di server.', null);
+        }
+
+        // 2. License expiry
+        if ($company && $company->expires_at) {
+            if ($company->expires_at->isPast()) {
+                $checks[] = $this->c('license_expiry', 'Masa berlaku lisensi', 'fail',
+                    'Lisensi sudah KEDALUWARSA pada ' . $company->expires_at->format('d M Y H:i') . '.',
+                    'Perpanjang (renew) lisensi agar klien bisa aktif kembali.');
+                $verdict = $verdict ?? $this->v('danger', 'Lisensi kedaluwarsa',
+                    'Lisensi berakhir ' . $company->expires_at->format('d M Y') . '. Klien tidak bisa memperpanjang token.',
+                    'Renew lisensi di halaman Licenses.');
+            } else {
+                $checks[] = $this->c('license_expiry', 'Masa berlaku lisensi', 'pass',
+                    'Berlaku sampai ' . $company->expires_at->format('d M Y') . '.', null);
+            }
+        } else {
+            $checks[] = $this->c('license_expiry', 'Masa berlaku lisensi', 'pass',
+                'Lisensi LIFETIME (tidak ada tanggal kedaluwarsa).', null);
+        }
+
+        // 3. Installation status
+        if (in_array($inst->status, ['revoked', 'blacklisted'], true)) {
+            $checks[] = $this->c('installation_status', 'Status instalasi', 'fail',
+                "Instalasi ini berstatus \"{$inst->status}\""
+                    . ($inst->revoke_reason ? " ({$inst->revoke_reason})" : '') . '. Token tidak akan diperpanjang.',
+                'Hapus revoke/blacklist jika instalasi ini sah.');
+            $verdict = $verdict ?? $this->v('danger', 'Instalasi di-' . $inst->status,
+                'Instalasi ini ditolak server, jadi klien akan minta aktivasi ulang.',
+                'Cek halaman Installations untuk memulihkan jika perlu.');
+        } else {
+            $checks[] = $this->c('installation_status', 'Status instalasi', 'pass',
+                'Instalasi aktif.', null);
+        }
+
+        // 4. Heartbeat freshness vs token TTL
+        $hbMsg = $last
+            ? ('Heartbeat sukses terakhir ' . $last->diffForHumans() . ' (' . $last->format('d M Y H:i') . ').')
+            : 'Belum pernah ada heartbeat sukses.';
+        if ($health === 'expired') {
+            $checks[] = $this->c('heartbeat', 'Kesegaran heartbeat', 'fail',
+                $hbMsg . " Sudah {$daysSince} hari (> TTL {$ttlDays} hari) → token offline klien kemungkinan SUDAH kedaluwarsa.",
+                'Penyebab di sisi klien: scheduler/cron mati atau server lisensi tak terjangkau dari klien. Cek halaman Diagnostics di klien.');
+            $verdict = $verdict ?? $this->v('danger', 'Token klien kemungkinan sudah kedaluwarsa',
+                "Klien tidak heartbeat {$daysSince} hari (lebih dari TTL token {$ttlDays} hari). Token offline-nya habis sehingga aplikasi kembali ke halaman aktivasi.",
+                'Di sisi klien: pastikan cron "schedule:run" hidup dan koneksi ke server lisensi lancar. Token akan otomatis diperpanjang begitu heartbeat jalan lagi.');
+        } elseif ($health === 'late') {
+            $checks[] = $this->c('heartbeat', 'Kesegaran heartbeat', 'warn',
+                $hbMsg . ' Klien telat heartbeat tapi token MASIH berlaku.',
+                'Pantau; jika berlanjut sampai > TTL, klien akan minta aktivasi ulang.');
+        } elseif ($health === 'never') {
+            $checks[] = $this->c('heartbeat', 'Kesegaran heartbeat', 'warn',
+                'Instalasi tercatat tapi belum pernah heartbeat sukses.', 'Pastikan klien sudah aktivasi dan cron jalan.');
+        } else {
+            $checks[] = $this->c('heartbeat', 'Kesegaran heartbeat', 'pass', $hbMsg, null);
+        }
+
+        // 5. Latest heartbeat result
+        if ($latest) {
+            $ok = in_array($latest->status, ['success', 'verified'], true);
+            $checks[] = $this->c('last_result', 'Hasil heartbeat terakhir', $ok ? 'pass' : 'fail',
+                'Status: ' . strtoupper((string) $latest->status)
+                    . ($latest->failure_reason ? ' — ' . $latest->failure_reason : '')
+                    . ' (' . optional($latest->heartbeat_at)->format('d M Y H:i') . ').',
+                $ok ? null : 'Lihat alasan kegagalan; bisa jadi fingerprint berubah atau lisensi ditolak.');
+            if (! $ok) {
+                $verdict = $verdict ?? $this->v('danger', 'Heartbeat terakhir gagal',
+                    'Server menolak heartbeat terakhir: ' . ($latest->failure_reason ?: $latest->status) . '.',
+                    'Periksa detail penolakan; mungkin perlu aktivasi ulang atau pembersihan instalasi.');
+            }
+        }
+
+        // 6. Installation slots
+        if ($company && $maxInstalls > 0) {
+            $full = $activeCount >= $maxInstalls;
+            $checks[] = $this->c('slots', 'Slot instalasi', $full ? 'warn' : 'pass',
+                "{$activeCount} / {$maxInstalls} slot terpakai.",
+                $full ? 'Slot penuh — instalasi baru (mis. setelah pindah server) akan ditolak sampai slot lama di-revoke.' : null);
+            if ($full && $health === 'expired') {
+                // A common real-world trap: server moved, old slot still occupies the cap.
+                $verdict = $verdict ?? $this->v('warning', 'Slot instalasi penuh',
+                    'Semua slot terpakai. Jika klien pindah server, aktivasi di mesin baru akan ditolak.',
+                    'Revoke slot/usage lama agar mesin baru bisa aktivasi.');
+            }
+        }
+
+        // 7. Suspicious events
+        if ($suspicious->count() > 0) {
+            $top = $suspicious->first();
+            $checks[] = $this->c('suspicious', 'Event mencurigakan', 'warn',
+                $suspicious->count() . ' event belum direview (terbaru: ' . ($top->event_type ?? 'unknown') . ').',
+                'Bisa berarti fingerprint berubah/clone. Tinjau di halaman Installations.');
+            $verdict = $verdict ?? $this->v('warning', 'Ada aktivitas mencurigakan',
+                $suspicious->count() . ' event belum direview — kemungkinan fingerprint berubah (pindah/clone server).',
+                'Tinjau event; jika pemindahan sah, revoke instalasi lama lalu aktivasi ulang di mesin baru.');
+        }
+
+        // Healthy fallback
+        if (! $verdict) {
+            $verdict = $this->v('success', 'Tidak ada kendala di sisi server',
+                'Lisensi aktif, instalasi sehat, dan heartbeat normal. Jika klien tetap minta aktivasi, penyebabnya ada di sisi klien (fingerprint berubah, jam server, atau APP_KEY).',
+                'Buka halaman Diagnostics di aplikasi klien untuk detail sisi-klien.');
+        }
+
+        return [
+            'installation' => [
+                'company'     => optional(optional($inst->licenseCompany)->company)->name
+                                 ?? optional($inst->licenseCompany)->label ?? '—',
+                'app_code'    => $inst->app_code,
+                'domain'      => $inst->domain,
+                'ip_address'  => $inst->ip_address,
+                'app_version' => $inst->app_version,
+                'hostname'    => $inst->hostname,
+                'status'      => $inst->status,
+                'health'      => $health,
+                'last_heartbeat' => $last?->toIso8601String(),
+                'days_since'  => $daysSince,
+            ],
+            'verdict' => $verdict,
+            'checks'  => $checks,
+        ];
+    }
+
+    protected function c(string $key, string $label, string $status, string $message, ?string $hint): array
+    {
+        return compact('key', 'label', 'status', 'message', 'hint');
+    }
+
+    protected function v(string $level, string $title, string $message, ?string $hint): array
+    {
+        return compact('level', 'title', 'message', 'hint');
+    }
+
     /**
      * Classify an installation's heartbeat freshness.
-     *   online  — pinged within 1.5× the interval
+     *   online  — pinged within 1.5x the interval
      *   late    — silent past that but within the token TTL (still licensed)
-     *   expired — silent longer than the token TTL → client's offline token has
+     *   expired — silent longer than the token TTL -> client's offline token has
      *             likely expired and it has bounced to its activation page
      *   never   — never heartbeated
      */
