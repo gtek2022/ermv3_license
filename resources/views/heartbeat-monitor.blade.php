@@ -35,6 +35,8 @@
   .hm-btn:hover { background: #f1f5f9; }
   .hm-diag { padding: .25rem .6rem; border: 1px solid #29abe2; background: #eff6ff; color: #1a3a6b; border-radius: 7px; font-size: .68rem; font-weight: 700; cursor: pointer; }
   .hm-diag:hover { background: #dbeafe; }
+  .hm-client { display:inline-block; margin-left:.35rem; padding: .25rem .55rem; border: 1px solid #cbd5e1; background:#fff; color:#475569; border-radius:7px; font-size:.68rem; font-weight:700; text-decoration:none; }
+  .hm-client:hover { background:#f1f5f9; }
 
   .hm-tabs { display: flex; gap: .35rem; flex-wrap: wrap; }
   .hm-tab { padding: .35rem .75rem; border: 1px solid #e2e8f0; background: #fff; border-radius: 999px; font-size: .74rem; cursor: pointer; color: #475569; }
@@ -125,7 +127,10 @@
       <td>${rel(i.last_heartbeat)}<div class="mono">${fmt(i.last_heartbeat)}</div></td>
       <td>${healthBadge(i.health)}</td>
       <td class="mono">${esc(nextTxt)}</td>
-      <td><button class="hm-diag" onclick="openDiagnose('${esc(i.hash)}')">🩺 Diagnose</button></td>
+      <td style="white-space:nowrap;">
+        <button class="hm-diag" onclick="openDiagnose('${esc(i.hash)}')">🩺 Diagnose</button>
+        ${i.client_url ? `<a class="hm-client" href="${esc(i.client_url)}" target="_blank" rel="noopener" title="Buka /license/diagnostics di klien">↗ Klien</a>` : ''}
+      </td>
     </tr>`;
   }
 
@@ -173,7 +178,10 @@
       <td class="mono">${[i.domain,i.ip_address].filter(Boolean).map(esc).join('<br>')||'—'}</td>
       <td>${healthBadge(i.health)}</td>
       <td>${i.days_since!=null?esc(i.days_since)+' hari':'—'}</td>
-      <td><button class="hm-diag" onclick="openDiagnose('${esc(i.hash)}')">🩺 Diagnose</button></td>
+      <td style="white-space:nowrap;">
+        <button class="hm-diag" onclick="openDiagnose('${esc(i.hash)}')">🩺 Diagnose</button>
+        ${i.client_url ? `<a class="hm-client" href="${esc(i.client_url)}" target="_blank" rel="noopener" title="Buka /license/diagnostics di klien">↗ Klien</a>` : ''}
+      </td>
     </tr>`).join('')}</tbody></table>`;
   }
 

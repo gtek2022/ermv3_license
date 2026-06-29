@@ -21,6 +21,13 @@ use Vinkla\Hashids\Facades\Hashids;
  */
 class HeartbeatMonitorController extends Controller
 {
+    /**
+     * Stable contract: every client app (ermv3, absensi, …) exposes its
+     * self-diagnostics at this fixed path. Keeping it identical across clients
+     * means gemilang never has to special-case per app.
+     */
+    public const CLIENT_DIAGNOSTICS_PATH = '/license/diagnostics';
+
     public function index(): View
     {
         return view('heartbeat-monitor', ['report' => $this->report()]);
@@ -56,6 +63,7 @@ class HeartbeatMonitorController extends Controller
                 return [
                     'hash'           => Hashids::encode($i->id),
                     'uuid'           => $i->installation_uuid,
+                    'client_url'     => $this->clientDiagnosticsUrl($i->domain),
                     'company'        => optional(optional($i->licenseCompany)->company)->name
                                         ?? optional($i->licenseCompany)->label
                                         ?? '—',
@@ -346,7 +354,7 @@ class HeartbeatMonitorController extends Controller
             return null;
         }
 
-        return 'https://' . $host . '/license/diagnostics';
+        return 'https://' . $host . self::CLIENT_DIAGNOSTICS_PATH;
     }
 
     /**
