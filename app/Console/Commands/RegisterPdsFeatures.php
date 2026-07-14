@@ -16,24 +16,26 @@ use Illuminate\Console\Command;
  */
 class RegisterPdsFeatures extends Command
 {
-    protected $signature = 'features:register-pds {--regenerate : Force a fresh FLK even if one already exists}';
+    protected $signature = 'features:register-pds {--app=pds : App code to register under (pds, pds-dev, pdslocal)} {--regenerate : Force a fresh FLK even if one already exists}';
 
     protected $description = 'Register/ensure PDS licensed features (forecast submenus + Outstanding) and print their FLKs.';
 
     public function handle(): int
     {
+        $appCode = (string) $this->option('app');
+
         $features = [
             'forecast_ar'  => ['name' => 'AR Forecast',            'category' => 'forecast',    'description' => 'Forecast → AR Forecast submenu.'],
             'forecast_yoy' => ['name' => 'Year on Year Forecast',  'category' => 'forecast',    'description' => 'Forecast → Year on Year submenu.'],
             'outstanding'  => ['name' => 'Outstanding',            'category' => 'operational', 'description' => 'Outstanding stale-tender dashboard (per-role cards).'],
         ];
 
-        $this->info('Registering PDS features (app_code=pds):');
+        $this->info('Registering PDS features (app_code=' . $appCode . '):');
         $this->newLine();
 
         foreach ($features as $key => $meta) {
             $feature = MasterAppFeature::updateOrCreate(
-                ['app_code' => 'pds', 'feature_key' => $key],
+                ['app_code' => $appCode, 'feature_key' => $key],
                 [
                     'name'             => $meta['name'],
                     'description'      => $meta['description'],
