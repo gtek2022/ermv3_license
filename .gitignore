@@ -35,3 +35,6 @@ Thumbs.db
 502.html
 /storage/logs/
 /bootstrap/cache/
+
+# Local deploy helper (contains SSH credentials) — keep out of the remote
+/deploy.py

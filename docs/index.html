@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gemilang — Dokumentasi</title>
+<style>
+  :root{--primary:#1a3a6b;--primary-mid:#29abe2;--bg:#f1f5f9;--card:#fff;
+    --ink:#1e293b;--muted:#64748b;--border:#e2e8f0;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.6}
+  header{background:linear-gradient(135deg,#1a3a6b,#29abe2);color:#fff;padding:40px 24px}
+  .wrap{max-width:900px;margin:0 auto;padding:0 20px}
+  header h1{font-size:1.9rem;margin-bottom:6px}
+  main{padding:28px 0 60px}
+  a.card{display:block;text-decoration:none;color:var(--ink);background:var(--card);
+    border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:14px 0;
+    box-shadow:0 1px 3px rgba(15,23,42,.04);transition:.15s}
+  a.card:hover{border-color:var(--primary-mid);transform:translateY(-1px)}
+  a.card h3{color:var(--primary);margin-bottom:4px}
+  a.card p{color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>gemilang — Dokumentasi</h1>
+  <p style="opacity:.9">Central License Server · Laravel 13 · PostgreSQL · PASETO v4</p></div></header>
+<main class="wrap">
+  <a class="card" href="panduan-lisensi.html"><h3>Panduan Lisensi ERM</h3>
+    <p>Cara kerja sistem lisensi: aktivasi, validasi, heartbeat, dan endpoint API.</p></a>
+</main>
+</body>
+</html>
