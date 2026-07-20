@@ -28,6 +28,7 @@ class RegisterPdsFeatures extends Command
             'forecast_ar'  => ['name' => 'AR Forecast',            'category' => 'forecast',    'description' => 'Forecast → AR Forecast submenu.'],
             'forecast_yoy' => ['name' => 'Year on Year Forecast',  'category' => 'forecast',    'description' => 'Forecast → Year on Year submenu.'],
             'outstanding'  => ['name' => 'Outstanding',            'category' => 'operational', 'description' => 'Outstanding stale-tender dashboard (per-role cards).'],
+            'approval'     => ['name' => 'Approval',               'category' => 'operational', 'description' => 'Approval hub (quotation + forecast approvals), exclusive to BOD/Presdir/Administrator.'],
         ];
 
         $this->info('Registering PDS features (app_code=' . $appCode . '):');
