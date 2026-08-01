@@ -2,8 +2,9 @@
 
 namespace App\Services\Licensing;
 
-use App\Models\LicenseSigningKey;
-use Illuminate\Support\Facades\Crypt;
+use LucaLongo\Licensing\Enums\KeyStatus;
+use LucaLongo\Licensing\Enums\KeyType;
+use LucaLongo\Licensing\Models\LicensingKey;
 use RuntimeException;
 
 /**
@@ -20,31 +21,49 @@ class SigningService
     /**
      * Generate a new Ed25519 keypair and persist it.
      */
-    public function generateAndStoreKeypair(?string $kid = null): LicenseSigningKey
+    public function generateAndStoreKeypair(?string $kid = null): LicensingKey
     {
         if (! extension_loaded('sodium')) {
             throw new RuntimeException('PHP sodium extension is required for license signing.');
         }
 
-        $keypair = sodium_crypto_sign_keypair();
-        $secretKey = sodium_crypto_sign_secretkey($keypair);
-        $publicKey = sodium_crypto_sign_publickey($keypair);
+        /*
+         * The package's own key store, not a second one.
+         *
+         * This wrote to a table of its own invention - is_active and rotated_at, which licensing_keys
+         * does not have - through a model class that was never written. Nothing called it, so the
+         * mistake stayed hidden; signPayload() below did call that missing class, and that is what made
+         * config-sync answer 500 for every client.
+         *
+         * generateKeyPair() encrypts the private key with the package's passphrase scheme, so a key
+         * issued here is usable by the token signer too.
+         */
+        $key = new LicensingKey();
 
-        $kid = $kid ?: substr(hash('sha256', $publicKey), 0, 16);
+        if ($kid) {
+            $key->kid = $kid;
+        }
 
-        // Deactivate previous active keys
-        LicenseSigningKey::query()->where('is_active', true)->update([
-            'is_active' => false,
-            'rotated_at' => now(),
-        ]);
+        return $key->generateKeyPair(KeyType::Signing);
+    }
 
-        return LicenseSigningKey::create([
-            'kid' => $kid,
-            'algorithm' => 'ed25519',
-            'public_key' => base64_encode($publicKey),
-            'private_key_encrypted' => Crypt::encryptString($secretKey),
-            'is_active' => true,
-        ]);
+    /**
+     * The newest usable signing key.
+     *
+     * Unexpired is preferred, not required. The package gives a signing key a 30-day valid_until, and
+     * the ones on this server are past it while the licences they signed are still in service -
+     * insisting here would keep config-sync broken for a reason that has nothing to do with the
+     * caller. Rotating the keys touches every client that has cached a public key, so that is a
+     * separate decision and deliberately not made here.
+     */
+    public function activeSigningKey(): ?LicensingKey
+    {
+        return LicensingKey::query()
+            ->where('type', KeyType::Signing)
+            ->where('status', KeyStatus::Active)
+            ->orderByRaw('CASE WHEN valid_until IS NULL OR valid_until > NOW() THEN 0 ELSE 1 END')
+            ->orderByDesc('valid_from')
+            ->first();
     }
 
     /**
@@ -57,19 +76,19 @@ class SigningService
      *   "sig":  "<base64url signature>"
      * }
      */
-    public function signPayload(array $payload, ?LicenseSigningKey $key = null): array
+    public function signPayload(array $payload, ?LicensingKey $key = null): array
     {
-        $key = $key ?: LicenseSigningKey::active();
+        $key = $key ?: $this->activeSigningKey();
         if (! $key) {
-            throw new RuntimeException('No active license signing key. Run: php artisan license:keys:generate');
+            throw new RuntimeException('No active license signing key.');
         }
 
         $canonical = $this->canonicalize($payload);
-        $signature = sodium_crypto_sign_detached($canonical, $key->privateKey());
+        $signature = sodium_crypto_sign_detached($canonical, $this->rawPrivateKey($key));
 
         return [
             'kid' => $key->kid,
-            'alg' => $key->algorithm,
+            'alg' => strtolower((string) $key->algorithm),
             'data' => $this->base64UrlEncode($canonical),
             'sig' => $this->base64UrlEncode($signature),
         ];
@@ -81,7 +100,7 @@ class SigningService
      */
     public function verifyEnvelope(array $envelope): bool
     {
-        $key = LicenseSigningKey::query()->where('kid', $envelope['kid'] ?? '')->first();
+        $key = LicensingKey::query()->where('kid', $envelope['kid'] ?? '')->first();
         if (! $key) {
             return false;
         }
@@ -93,7 +112,7 @@ class SigningService
             return false;
         }
 
-        return sodium_crypto_sign_verify_detached($sig, $data, $key->publicKeyRaw());
+        return sodium_crypto_sign_verify_detached($sig, $data, $this->rawPublicKey($key));
     }
 
     public function canonicalize(array $payload): string
@@ -118,6 +137,29 @@ class SigningService
         }
 
         return $payload;
+    }
+
+    /**
+     * The package keeps both keys base64 encoded inside its own envelopes; sodium wants raw bytes.
+     */
+    private function rawPrivateKey(LicensingKey $key): string
+    {
+        $stored = $key->getPrivateKey();
+
+        if (! $stored) {
+            throw new RuntimeException('Signing key ' . $key->kid . ' has no private key on record.');
+        }
+
+        $decoded = base64_decode($stored, true);
+
+        return $decoded !== false ? $decoded : $stored;
+    }
+
+    private function rawPublicKey(LicensingKey $key): string
+    {
+        $decoded = base64_decode((string) $key->public_key, true);
+
+        return $decoded !== false ? $decoded : (string) $key->public_key;
     }
 
     public function base64UrlEncode(string $bytes): string
