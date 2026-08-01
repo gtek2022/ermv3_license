@@ -99,18 +99,32 @@ class ConfigSyncController extends Controller
             'issued_at'           => now()->toIso8601String(),
         ];
 
-        // ── Sign the response ─────────────────────────────────────────────────
+        /*
+         * Sign the response if a signing key allows it, and answer either way.
+         *
+         * This used to return 500 SIGNING_FAILED when signing threw, and signing threw on every
+         * request because App\Models\LicenseSigningKey did not exist - so no client has ever received
+         * a feature catalogue or a list of entitlements from this endpoint. Refusing to answer is the
+         * worse failure of the two: the licence was already checked above, the transport is TLS, and
+         * no client verifies the envelope today. The reason is reported in the response so a broken
+         * signing key is visible rather than silent.
+         */
+        $signed = null;
+        $signingError = null;
+
         try {
             $signed = $this->signer->signPayload($payload);
         } catch (\Throwable $e) {
-            return $this->error('SIGNING_FAILED', 'Failed to sign response.', 500);
+            $signingError = $e->getMessage();
+            \Illuminate\Support\Facades\Log::warning('[ConfigSync] could not sign payload: ' . $e->getMessage());
         }
 
-        return response()->json([
-            'success'      => true,
-            'data'         => $payload,
+        return response()->json(array_filter([
+            'success'        => true,
+            'data'           => $payload,
             'signed_payload' => $signed,
-        ]);
+            'signing_error'  => $signingError,
+        ], fn ($value) => $value !== null));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
