@@ -41,8 +41,15 @@ class DashboardController extends Controller
         // Heartbeat interval (config-driven) so dashboard can compute countdown
         $heartbeatInterval = (int) MasterConfig::get('licensing.heartbeat_interval', 3600);
 
-        // Recent heartbeats with countdown to next expected ping
+        // Recent heartbeats with countdown to next expected ping.
+        //
+        // Revoked and blacklisted installations are left out: this panel is the
+        // "Live Heartbeats" view and its own header counts only active installs,
+        // so listing installs the server refuses to renew contradicted it. They
+        // are still on the Installations page, which is where the audit trail
+        // and the un-revoke action live - hidden here, not deleted.
         $recentHeartbeats = LicenseInstallation::whereNotNull('last_heartbeat_at')
+            ->whereNotIn('status', ['revoked', 'blacklisted'])
             ->orderByDesc('last_heartbeat_at')
             ->limit(8)
             ->get()
