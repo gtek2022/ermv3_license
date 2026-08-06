@@ -8,9 +8,9 @@ use App\Models\MasterAppFeature;
 use Illuminate\Console\Command;
 
 /**
- * Register the licensed eproc modules, and grant them per environment.
+ * Register the licensed crm modules, and grant them per environment.
  *
- * eproc is one app with two installations - app_code 'eproc' for production and 'eproc-dev' for the
+ * crm is one app with two installations - app_code 'crm' for production and 'crm-dev' for the
  * dev site - each with its own licence. Every module in the sidebar is licensed except Dashboard and
  * Master Data: the dashboard is the landing page and would leave a licensed install with nowhere to
  * go, and master data is reference data the licensed modules read.
@@ -24,33 +24,33 @@ use Illuminate\Console\Command;
  * entitlement is what ties it to the licence, so a key lifted from the dev site does not unlock a
  * module production has not paid for.
  *
- *   php artisan features:register-eproc --app=eproc-dev --grant=all
- *   php artisan features:register-eproc --app=eproc --grant=procurement,finance,approval
- *   php artisan features:register-eproc --app=eproc --regenerate     # reissue every FLK
+ *   php artisan features:register-crm --app=crm-dev --grant=all
+ *   php artisan features:register-crm --app=crm --grant=procurement,finance,approval
+ *   php artisan features:register-crm --app=crm --regenerate     # reissue every FLK
  *
  * Idempotent. Existing FLKs are kept unless --regenerate is passed, because reissuing one silently
  * would lock out an installation that had already activated it.
  */
-class RegisterEprocFeatures extends Command
+class RegisterCrmFeatures extends Command
 {
-    protected $signature = 'features:register-eproc
-        {--app=eproc : App code to register under (eproc, eproc-dev)}
+    protected $signature = 'features:register-crm
+        {--app=crm : App code to register under (crm, crm-dev)}
         {--grant= : Entitle the licence to these features - "all", or a comma separated list}
         {--regenerate : Force a fresh FLK even if one already exists}';
 
-    protected $description = 'Register the licensed eproc modules with FLKs, and optionally grant them to that app\'s licence.';
+    protected $description = 'Register the licensed crm modules with FLKs, and optionally grant them to that app\'s licence.';
 
     /**
      * One key per sidebar module. Dashboard and Master Data are deliberately absent.
      *
-     * The keys match App\Support\ModuleLicense in the eproc client, which maps each one to the URL
+     * The keys match App\Support\ModuleLicense in the crm client, which maps each one to the URL
      * prefixes and the menu entries it covers. Changing a key here means changing it there.
      */
     private const FEATURES = [
-        // eproc's own modules
-        'approval'    => ['Approval', 'eproc', 'Approval hub: PR, PO and RFP approvals for managers and the Direktur.'],
-        'procurement' => ['Procurement', 'eproc', 'Purchase Request, Purchase Order, Goods Receipt and Request For Payment.'],
-        'finance'     => ['Finance', 'eproc', 'Finance review, RFP transactions and payment confirmation.'],
+        // the procurement modules
+        'approval'    => ['Approval', 'procurement', 'Approval hub: PR, PO and RFP approvals for managers and the Direktur.'],
+        'procurement' => ['Procurement', 'procurement', 'Purchase Request, Purchase Order, Goods Receipt and Request For Payment.'],
+        'finance'     => ['Finance', 'procurement', 'Finance review, RFP transactions and payment confirmation.'],
 
         // crm modules, one key per sidebar group
         'clients'   => ['Customers', 'crm', 'Clients and client users.'],
@@ -71,7 +71,7 @@ class RegisterEprocFeatures extends Command
     {
         $appCode = (string) $this->option('app');
 
-        $this->info('eproc features for app_code=' . $appCode);
+        $this->info('crm features for app_code=' . $appCode);
         $this->newLine();
 
         $keys = [];
