@@ -64,7 +64,33 @@ class AppController extends Controller
             ->whereHas('licenseCompany') // exclude orphans
             ->get();
 
-        return view('master.apps.show', compact('app', 'features', 'licenseApps'));
+        /*
+         * Instalasi mana saja yang memegang FLK app ini, satu baris per installation_uuid.
+         *
+         * Ada karena instalasi bisa kehilangan identitasnya - uuid client hilang bersama storage atau
+         * saat APP_KEY berputar, lalu client mencetak uuid baru - dan aktivasi lamanya tertinggal
+         * sebagai instalasi hantu. Sebelum ada panel ini, satu-satunya gejalanya adalah angka
+         * "N instalasi aktif" yang terus naik tanpa penjelasan dan tanpa cara memperbaikinya dari UI.
+         *
+         * Diringkas di controller, bukan di blade: view sebelumnya menembak dua query agregat per
+         * baris fitur, dan menambah daftar instalasi ke dalam loop itu akan menjadikannya empat.
+         */
+        $installations = LicenseFeatureActivation::where('app_code', $app->code)
+            ->orderBy('installation_uuid')
+            ->get()
+            ->groupBy('installation_uuid')
+            ->map(fn ($rows) => [
+                'total'        => $rows->count(),
+                'live'         => $rows->filter(fn ($a) => $a->isCurrentlyActive())->count(),
+                'lapsed'       => $rows->filter(fn ($a) => $a->isExpired() && $a->status !== 'revoked')->count(),
+                'revoked'      => $rows->where('status', 'revoked')->count(),
+                'first_seen'   => $rows->min('activated_at'),
+                'last_seen'    => $rows->max('updated_at'),
+                'fingerprints' => $rows->pluck('fingerprint')->filter()->unique()->count(),
+            ])
+            ->sortByDesc('last_seen');
+
+        return view('master.apps.show', compact('app', 'features', 'licenseApps', 'installations'));
     }
 
     public function edit(string $hash): View
@@ -190,6 +216,74 @@ class AppController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    /**
+     * Cabut aktivasi satu instalasi dari sebuah fitur.
+     *
+     * Dibutuhkan karena instalasi bisa kehilangan identitasnya. installation_uuid client disimpan di
+     * storage terenkripsi APP_KEY; kalau storage-nya terhapus atau APP_KEY berputar, client mencetak
+     * uuid baru dan aktivasi lamanya tertinggal sebagai instalasi hantu yang menggelembungkan hitungan
+     * "instalasi aktif" selamanya.
+     *
+     * Sengaja tidak digabungkan otomatis oleh server. Fingerprint pun ikut berubah saat APP_KEY
+     * berputar - HardenedFingerprintGenerator memang mengikat ke APP_KEY - jadi dari sisi server
+     * sebuah redeploy tidak bisa dibedakan dari aplikasi yang dikloning ke mesin lain. Itu justru inti
+     * proteksi anti-clone-nya; menggabungkan otomatis akan melubanginya. Yang tahu bedanya hanya orang
+     * yang melakukan deploy, jadi keputusannya diberikan ke dia lewat tombol ini.
+     *
+     * Di-revoke, bukan dihapus: catatan bahwa lisensi pernah dipakai di sana tetap ada, dan scope
+     * live() sudah mengecualikan yang revoked sehingga hitungannya langsung benar.
+     */
+    public function revokeFeatureInstallation(Request $request, string $hash, int $featureId): RedirectResponse
+    {
+        $this->findOrFail($hash);
+        $feature = MasterAppFeature::findOrFail($featureId);
+
+        $data = $request->validate([
+            'installation_uuid' => 'required|string|max:64',
+        ]);
+
+        $activation = LicenseFeatureActivation::where('app_code', $feature->app_code)
+            ->where('feature_key', $feature->feature_key)
+            ->where('installation_uuid', $data['installation_uuid'])
+            ->first();
+
+        if (! $activation) {
+            return back()->withErrors(['error' => 'Aktivasi tidak ditemukan.']);
+        }
+
+        $activation->update(['status' => 'revoked', 'revoked_at' => now()]);
+
+        return back()->with('success', 'Aktivasi "' . $feature->name . '" untuk instalasi '
+            . substr($data['installation_uuid'], 0, 13) . '… dicabut.');
+    }
+
+    /**
+     * Cabut semua aktivasi satu instalasi, di seluruh fitur app ini.
+     *
+     * Kehilangan identitas mengenai semua fitur sekaligus - di crm-dev satu kejadian meninggalkan 15
+     * baris hantu - jadi mencabutnya satu per satu berarti 15 klik untuk satu keputusan yang sama.
+     */
+    public function revokeInstallation(Request $request, string $hash): RedirectResponse
+    {
+        $app = $this->findOrFail($hash);
+
+        $data = $request->validate([
+            'installation_uuid' => 'required|string|max:64',
+        ]);
+
+        $count = LicenseFeatureActivation::where('app_code', $app->code)
+            ->where('installation_uuid', $data['installation_uuid'])
+            ->where('status', '!=', 'revoked')
+            ->update(['status' => 'revoked', 'revoked_at' => now()]);
+
+        if ($count === 0) {
+            return back()->withErrors(['error' => 'Tidak ada aktivasi aktif untuk instalasi itu.']);
+        }
+
+        return back()->with('success', $count . ' aktivasi instalasi '
+            . substr($data['installation_uuid'], 0, 13) . '… dicabut.');
     }
 
     /**

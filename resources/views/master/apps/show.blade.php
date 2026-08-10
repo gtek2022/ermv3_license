@@ -173,6 +173,80 @@
                 </script>
             </div>
 
+            {{-- Instalasi yang memegang FLK app ini.
+                 Muncul supaya instalasi hantu - sisa dari instalasi yang kehilangan uuid-nya karena
+                 storage terhapus atau APP_KEY berputar - kelihatan dan bisa dicabut, bukan hanya
+                 menggelembungkan angka "instalasi aktif" tanpa penjelasan. --}}
+            @if($installations->count() > 0)
+            <div style="padding:.85rem 1.25rem;border-bottom:1px solid #f1f5f9;">
+                <div style="font-size:.7rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;">
+                    Instalasi ({{ $installations->count() }})
+                </div>
+                @if($installations->count() > 1)
+                <div style="font-size:.65rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:.4rem .6rem;margin-bottom:.5rem;">
+                    Lebih dari satu instalasi memegang FLK app ini. Kalau app ini semestinya terpasang
+                    di satu tempat saja, yang lama biasanya sisa dari deploy yang menghapus storage atau
+                    memutar APP_KEY — cabut yang <em>terakhir aktif</em>-nya paling tua.
+                </div>
+                @endif
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Installation UUID</th>
+                                <th>Aktif</th>
+                                <th>Pertama</th>
+                                <th>Terakhir aktif</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($installations as $uuid => $info)
+                            <tr>
+                                <td>
+                                    <code style="font-size:.68rem;">{{ $uuid }}</code>
+                                    @if($info['fingerprints'] > 1)
+                                        <div style="font-size:.6rem;color:#92400e;">
+                                            {{ $info['fingerprints'] }} fingerprint — APP_KEY pernah berubah
+                                        </div>
+                                    @endif
+                                </td>
+                                <td style="font-size:.7rem;">
+                                    @if($info['live'] > 0)
+                                        <span class="badge badge-success" style="font-size:.6rem;">{{ $info['live'] }} fitur</span>
+                                    @else
+                                        <span class="badge badge-secondary" style="font-size:.6rem;">—</span>
+                                    @endif
+                                    @if($info['lapsed'] > 0)
+                                        <span class="badge badge-warning" style="font-size:.6rem;background:#fee2e2;color:#b91c1c;">{{ $info['lapsed'] }} habis</span>
+                                    @endif
+                                    @if($info['revoked'] > 0)
+                                        <span style="font-size:.6rem;color:#94a3b8;">{{ $info['revoked'] }} dicabut</span>
+                                    @endif
+                                </td>
+                                <td style="font-size:.66rem;color:#64748b;">{{ $info['first_seen'] }}</td>
+                                <td style="font-size:.66rem;color:#64748b;">{{ $info['last_seen'] }}</td>
+                                <td>
+                                    @if($info['live'] > 0)
+                                    <form method="POST" action="{{ route('master.apps.revoke-installation', Hashids::encode($app->id)) }}"
+                                        data-confirm="Cabut {{ $info['live'] }} aktivasi instalasi ini? Kalau instalasi ini masih hidup, modulnya akan terkunci dan perlu aktivasi FLK ulang."
+                                        data-confirm-type="danger" data-confirm-title="Cabut Instalasi" data-confirm-ok="Ya, Cabut">
+                                        @csrf
+                                        <input type="hidden" name="installation_uuid" value="{{ $uuid }}">
+                                        <button type="submit" class="btn btn-warning btn-sm" style="font-size:.62rem;padding:.15rem .45rem;">
+                                            Cabut semua
+                                        </button>
+                                    </form>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
+
             {{-- Feature list --}}
             <div class="table-wrap">
                 <table>
