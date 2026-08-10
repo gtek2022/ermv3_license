@@ -13,13 +13,15 @@ class MasterAppFeature extends Model
     protected $fillable = [
         'app_code', 'feature_key', 'name', 'description',
         'category', 'is_active', 'requires_license',
+        'license_duration_days',
         'feature_license_key_hash', 'feature_license_key_encrypted',
         'created_by',
     ];
 
     protected $casts = [
-        'is_active'        => 'boolean',
-        'requires_license' => 'boolean',
+        'is_active'             => 'boolean',
+        'requires_license'      => 'boolean',
+        'license_duration_days' => 'integer',
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -50,6 +52,59 @@ class MasterAppFeature extends Model
     public function scopeLicensed($query)
     {
         return $query->where('requires_license', true);
+    }
+
+    // ── Validity period ───────────────────────────────────────────────────────
+
+    /**
+     * Does redeeming this FLK grant access for a limited term?
+     *
+     * False means lifetime, which is what an FLK was before terms existed and what every key issued
+     * until now still is.
+     */
+    public function hasValidityPeriod(): bool
+    {
+        return $this->license_duration_days !== null && $this->license_duration_days > 0;
+    }
+
+    /**
+     * Is this a lifetime FLK - once redeemed, never lapses?
+     *
+     * A null license_duration_days is the single record of this. There is deliberately no separate
+     * `is_lifetime` flag: two columns answering one question is how they end up disagreeing, and
+     * there would be no honest answer for a row claiming lifetime and thirty days at once. The admin
+     * screens ask the question as an explicit choice and store the answer here.
+     */
+    public function isLifetime(): bool
+    {
+        return ! $this->hasValidityPeriod();
+    }
+
+    /** 'lifetime' or 'term' - what the admin form's radio binds to. */
+    public function validityMode(): string
+    {
+        return $this->isLifetime() ? 'lifetime' : 'term';
+    }
+
+    /**
+     * When an activation redeemed right now would lapse, or null for a perpetual key.
+     *
+     * The one place the term is turned into a deadline, so activation and renewal cannot drift
+     * apart on how it is counted.
+     */
+    public function expiryFromNow(): ?\Illuminate\Support\Carbon
+    {
+        return $this->hasValidityPeriod()
+            ? now()->addDays($this->license_duration_days)
+            : null;
+    }
+
+    /** "30 hari" or "Lifetime", for the admin screens and the flash messages. */
+    public function validityLabel(): string
+    {
+        return $this->hasValidityPeriod()
+            ? $this->license_duration_days . ' hari'
+            : 'Lifetime';
     }
 
     // ── Feature license key management ───────────────────────────────────────

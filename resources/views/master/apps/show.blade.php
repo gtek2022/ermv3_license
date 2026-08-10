@@ -79,7 +79,7 @@
                     Tambah Feature Baru
                 </div>
                 <form method="POST" action="{{ route('master.apps.features.store', Hashids::encode($app->id)) }}"
-                    style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr auto;gap:.5rem;align-items:end;">
+                    style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr .8fr auto;gap:.5rem;align-items:end;">
                     @csrf
                     <div>
                         <label class="form-label" style="font-size:.62rem;">Feature Key *</label>
@@ -99,6 +99,30 @@
                             <option value="addon">Addon</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="form-label" style="font-size:.62rem;">Masa Aktif</label>
+                        <div style="display:flex;gap:.5rem;align-items:center;">
+                            @php $vMode = old('license_validity_mode', 'lifetime'); @endphp
+                            <label style="display:flex;align-items:center;gap:.2rem;font-size:.68rem;cursor:pointer;white-space:nowrap;">
+                                <input type="radio" name="license_validity_mode" value="lifetime"
+                                    @checked($vMode !== 'term') data-validity-radio style="accent-color:#1a3a6b;">
+                                Lifetime
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.2rem;font-size:.68rem;cursor:pointer;white-space:nowrap;">
+                                <input type="radio" name="license_validity_mode" value="term"
+                                    @checked($vMode === 'term') data-validity-radio style="accent-color:#1a3a6b;">
+                                Berjangka
+                            </label>
+                            <input type="number" name="license_duration_days" min="1" max="3650"
+                                class="form-control @error('license_duration_days') is-invalid @enderror"
+                                placeholder="hari" value="{{ old('license_duration_days') }}"
+                                @disabled($vMode !== 'term') data-validity-days
+                                style="width:64px;padding:.35rem .4rem;font-size:.75rem;">
+                        </div>
+                        @error('license_duration_days')
+                            <div style="font-size:.62rem;color:#b91c1c;margin-top:.2rem;">{{ $message }}</div>
+                        @enderror
+                    </div>
                     <div style="display:flex;flex-direction:column;gap:.35rem;">
                         <label style="display:flex;align-items:center;gap:.35rem;font-size:.7rem;cursor:pointer;white-space:nowrap;">
                             <input type="checkbox" name="requires_license" value="1"
@@ -108,6 +132,45 @@
                         <button type="submit" class="btn btn-primary btn-sm">+ Tambah</button>
                     </div>
                 </form>
+                <div style="font-size:.62rem;color:#94a3b8;margin-top:.4rem;">
+                    <strong>Lifetime</strong>: sekali diaktivasi, tidak pernah kedaluwarsa.
+                    <strong>Berjangka</strong>: dihitung sejak instalasi menukarkan FLK — setelah lewat,
+                    modul terkunci kembali di aplikasi client pada heartbeat berikutnya.
+                </div>
+
+                {{-- Kolom hari hanya hidup kalau modenya Berjangka. Dinonaktifkan (bukan hanya
+                     diabaikan) supaya tidak ada angka nyangkut yang terlihat seolah berlaku padahal
+                     pilihannya Lifetime. Field yang disabled tidak ikut terkirim, jadi required_if
+                     tetap yang menjaga sisi server. --}}
+                <script>
+                // Menunggu DOM siap: blok ini berada di atas tabel fitur, jadi saat parse berjalan
+                // editor masa aktif per-baris belum ada dan querySelectorAll tidak akan menemukannya.
+                document.addEventListener('DOMContentLoaded', function () {
+                    document.querySelectorAll('[data-validity-days]').forEach(function (days) {
+                        var scope = days.closest('form') || document;
+                        var radios = scope.querySelectorAll('[data-validity-radio]');
+                        if (!radios.length) return;
+
+                        // fromUser: hanya pindahkan kursor kalau admin memang baru mengklik Berjangka.
+                        // Saat load awal, memanggil focus() akan merebut fokus halaman tanpa diminta.
+                        function sync(fromUser) {
+                            var term = scope.querySelector('[data-validity-radio][value="term"]');
+                            var isTerm = term && term.checked;
+                            days.disabled = !isTerm;
+                            if (!isTerm) {
+                                days.value = '';
+                            } else if (fromUser) {
+                                days.focus();
+                            }
+                        }
+
+                        radios.forEach(function (r) {
+                            r.addEventListener('change', function () { sync(true); });
+                        });
+                        sync(false);
+                    });
+                });
+                </script>
             </div>
 
             {{-- Feature list --}}
@@ -119,6 +182,7 @@
                             <th>Nama</th>
                             <th>Kategori</th>
                             <th>Tipe</th>
+                            <th>Masa Aktif</th>
                             <th>Status</th>
                             <th>Lisensi ke...</th>
                             <th></th>
@@ -126,6 +190,19 @@
                     </thead>
                     <tbody>
                         @forelse($features as $feat)
+                        @php
+                            // Dihitung sekali per baris: dipakai kolom Masa Aktif dan kolom Lisensi ke...
+                            // live()   = status aktif DAN masih di dalam masa aktif
+                            // lapsed() = status masih aktif tapi tenggatnya sudah lewat
+                            $liveNow = $feat->requires_license
+                                ? \App\Models\LicenseFeatureActivation::where('feature_key', $feat->feature_key)
+                                    ->where('app_code', $app->code)->live()->count()
+                                : 0;
+                            $lapsedNow = $feat->requires_license
+                                ? \App\Models\LicenseFeatureActivation::where('feature_key', $feat->feature_key)
+                                    ->where('app_code', $app->code)->lapsed()->count()
+                                : 0;
+                        @endphp
                         <tr>
                             <td><code style="font-size:.72rem;">{{ $feat->feature_key }}</code></td>
                             <td style="font-size:.82rem;font-weight:500;">{{ $feat->name }}</td>
@@ -138,6 +215,49 @@
                                     <span class="badge badge-warning" style="background:#fef3c7;color:#92400e;">🔑 Licensed</span>
                                 @else
                                     <span class="badge badge-info">Free</span>
+                                @endif
+                            </td>
+                            <td>
+                                {{-- Masa aktif FLK. Bisa diubah di sini karena semua fitur sudah
+                                     terdaftar sebelum masa aktif ada; menghapus lalu mendaftar ulang
+                                     akan mencabut semua aktivasi yang sedang berjalan. --}}
+                                @if($feat->requires_license)
+                                    <div style="margin-bottom:.25rem;">
+                                        @if($feat->isLifetime())
+                                            <span class="badge badge-blue" style="font-size:.6rem;">∞ Lifetime</span>
+                                        @else
+                                            <span class="badge badge-secondary" style="font-size:.6rem;">
+                                                {{ $feat->license_duration_days }} hari
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <form method="POST" action="{{ route('master.apps.features.duration', [Hashids::encode($app->id), $feat->id]) }}"
+                                        style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+                                        @csrf
+                                        <label style="display:flex;align-items:center;gap:.15rem;font-size:.62rem;cursor:pointer;">
+                                            <input type="radio" name="license_validity_mode" value="lifetime"
+                                                @checked($feat->isLifetime()) data-validity-radio
+                                                style="accent-color:#1a3a6b;">∞
+                                        </label>
+                                        <label style="display:flex;align-items:center;gap:.15rem;font-size:.62rem;cursor:pointer;">
+                                            <input type="radio" name="license_validity_mode" value="term"
+                                                @checked(! $feat->isLifetime()) data-validity-radio
+                                                style="accent-color:#1a3a6b;">hari
+                                        </label>
+                                        <input type="number" name="license_duration_days" min="1" max="3650"
+                                            value="{{ $feat->license_duration_days }}" placeholder="30"
+                                            @disabled($feat->isLifetime()) data-validity-days
+                                            style="width:52px;padding:.15rem .3rem;font-size:.68rem;border:1px solid #cbd5e1;border-radius:4px;">
+                                        <button type="submit" class="btn btn-secondary btn-sm"
+                                            style="font-size:.6rem;padding:.12rem .35rem;">Simpan</button>
+                                    </form>
+                                    @if($lapsedNow > 0)
+                                        <div style="font-size:.62rem;color:#b91c1c;margin-top:.2rem;">
+                                            {{ $lapsedNow }} instalasi kedaluwarsa
+                                        </div>
+                                    @endif
+                                @else
+                                    <span style="font-size:.68rem;color:#94a3b8;">—</span>
                                 @endif
                             </td>
                             <td>
@@ -171,10 +291,16 @@
                                                 </form>
                                             </div>
                                             <div id="flk-result-{{ $feat->id }}" style="display:none;"></div>
-                                            {{-- Active activations count --}}
-                                            @php $activationCount = \App\Models\LicenseFeatureActivation::where('feature_key', $feat->feature_key)->where('app_code', $app->code)->where('status','active')->count(); @endphp
-                                            @if($activationCount > 0)
-                                            <span style="font-size:.65rem;color:#166534;">{{ $activationCount }} instalasi aktif</span>
+                                            {{-- Aktivasi yang benar-benar berjalan: status aktif DAN
+                                                 masih di dalam masa aktifnya. Sebelumnya hitungan ini
+                                                 memakai status saja, jadi instalasi yang masa aktifnya
+                                                 sudah habis masih terhitung aktif di sini padahal
+                                                 modulnya sudah terkunci di sisi client. --}}
+                                            @if($liveNow > 0)
+                                            <span style="font-size:.65rem;color:#166534;">{{ $liveNow }} instalasi aktif</span>
+                                            @endif
+                                            @if($lapsedNow > 0)
+                                            <span style="font-size:.65rem;color:#b91c1c;">{{ $lapsedNow }} masa aktif habis</span>
                                             @endif
                                         @else
                                             <span style="font-size:.68rem;color:#94a3b8;font-style:italic;">Kunci belum dibuat</span>

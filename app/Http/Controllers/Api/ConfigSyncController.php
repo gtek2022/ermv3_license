@@ -262,36 +262,65 @@ class ConfigSyncController extends Controller
      *     category: string,
      *     is_active: bool,           // admin toggle (free features)
      *     requires_license: bool,    // true = needs FLK-XXXX key
-     *     activated: bool,           // true = this installation has activated the feature license
+     *     activated: bool,           // true = this installation has a live feature licence
+     *     expires_at: string|null,   // ISO-8601 deadline, null = perpetual
+     *     days_remaining: int|null,  // whole days left, null = perpetual, 0 = lapsed
+     *     expired: bool,             // the term ran out (activated is false in that case too)
      *   }
      * }
+     *
+     * `activated` is the field clients gate on, and an activation whose term has run out does not
+     * count towards it - that is what makes a lapsed FLK re-lock the module. The three validity
+     * fields are carried alongside so a client can say *why* it locked, and can warn while the term
+     * is still running rather than only reacting once it is gone.
      */
     private function buildFeatureCatalog(string $appCode, ?string $installationUuid): array
     {
         $features = MasterAppFeature::where('app_code', $appCode)->get();
 
-        // Get activated feature keys for this installation
-        $activatedKeys = [];
+        // This installation's activations, keyed by feature. Fetched as models rather than plucked
+        // keys because the deadline travels with each one.
+        $activations = collect();
         if ($installationUuid) {
-            $activatedKeys = LicenseFeatureActivation::where('app_code', $appCode)
+            $activations = LicenseFeatureActivation::where('app_code', $appCode)
                 ->where('installation_uuid', $installationUuid)
                 ->where('status', 'active')
-                ->pluck('feature_key')
-                ->toArray();
+                ->get()
+                ->keyBy('feature_key');
         }
 
-        return $features->mapWithKeys(function ($f) use ($activatedKeys) {
+        return $features->mapWithKeys(function ($f) use ($activations) {
+            $activation = $activations->get($f->feature_key);
+
+            // Free features carry no term and are always "activated"; only the admin toggle
+            // (is_active, read separately by the client) can take one away.
+            if (! $f->requires_license) {
+                return [
+                    $f->feature_key => [
+                        'name'             => $f->name,
+                        'category'         => $f->category,
+                        'is_active'        => $f->is_active,
+                        'requires_license' => false,
+                        'activated'        => true,
+                        'expires_at'       => null,
+                        'days_remaining'   => null,
+                        'expired'          => false,
+                    ],
+                ];
+            }
+
             return [
                 $f->feature_key => [
                     'name'             => $f->name,
                     'category'         => $f->category,
                     'is_active'        => $f->is_active,
-                    'requires_license' => $f->requires_license,
-                    // For free features: accessible if is_active = true
-                    // For licensed features: accessible if is_active = true AND activated = true
-                    'activated'        => $f->requires_license
-                        ? in_array($f->feature_key, $activatedKeys)
-                        : true, // free features are always "activated"
+                    'requires_license' => true,
+                    // Live means active by status AND inside its term. No activation at all and a
+                    // lapsed one both land on false here; `expired` is what tells them apart.
+                    'activated'        => (bool) $activation?->isCurrentlyActive(),
+                    'expires_at'       => $activation?->expires_at?->toIso8601String(),
+                    'days_remaining'   => $activation?->daysRemaining(),
+                    'expired'          => (bool) $activation?->isExpired(),
                 ],
             ];
         })->toArray();

@@ -21,7 +21,13 @@ class FeatureLicenseController extends Controller
      * Activate a feature license on an installation.
      *
      * Request: { app_code, feature_license_key, installation_uuid, fingerprint }
-     * Response: { success, feature_key, feature_name, status }
+     * Response: { success, feature_key, feature_name, status, expires_at, days_remaining, expired }
+     *
+     * When the feature carries a term (master_app_features.license_duration_days) the deadline is
+     * stamped here as now() + term. Redeeming the same key again renews from this moment rather than
+     * adding to whatever was left: "activate" is a fresh term, and a customer who pastes their key
+     * twice should not quietly end up with sixty days on a thirty-day licence. Extending an existing
+     * term is a separate decision and belongs to an administrator, not to whoever holds the key.
      */
     public function activate(Request $request): JsonResponse
     {
@@ -63,17 +69,26 @@ class FeatureLicenseController extends Controller
                 'fingerprint'               => $data['fingerprint'],
                 'status'                    => 'active',
                 'activated_at'              => now(),
+                // null for a perpetual key, which is what every FLK issued before terms existed is.
+                'expires_at'                => $feature->expiryFromNow(),
                 'revoked_at'                => null,
             ]
         );
 
-        return response()->json([
+        $message = 'Feature "' . $feature->name . '" activated successfully.';
+
+        if ($activation->expires_at) {
+            $message .= ' Berlaku ' . $feature->license_duration_days . ' hari, sampai '
+                . $activation->expires_at->translatedFormat('d M Y H:i') . '.';
+        }
+
+        return response()->json(array_merge([
             'success'      => true,
             'feature_key'  => $feature->feature_key,
             'feature_name' => $feature->name,
             'status'       => 'active',
-            'message'      => 'Feature "' . $feature->name . '" activated successfully.',
-        ]);
+            'message'      => $message,
+        ], $activation->validityPayload()));
     }
 
     /**
@@ -111,6 +126,14 @@ class FeatureLicenseController extends Controller
     /**
      * Get status of all feature activations for an installation.
      * Called during config sync to include feature activation status.
+     *
+     * `activated_features` stays a flat list of keys, because pds reads it that way
+     * (App\Services\Licensing\LicenseClient) and this is the shape it expects. What changed is what
+     * qualifies: an activation whose term has run out is no longer in the list, so pds re-locks on
+     * expiry without needing a change of its own.
+     *
+     * `features` is added alongside with the term detail, for clients that want to warn before the
+     * deadline rather than only react after it.
      */
     public function status(Request $request): JsonResponse
     {
@@ -121,13 +144,17 @@ class FeatureLicenseController extends Controller
 
         $activations = LicenseFeatureActivation::where('app_code', $data['app_code'])
             ->where('installation_uuid', $data['installation_uuid'])
-            ->where('status', 'active')
-            ->pluck('feature_key')
-            ->toArray();
+            ->live()
+            ->get();
 
         return response()->json([
-            'success'           => true,
-            'activated_features' => $activations,
+            'success'            => true,
+            'activated_features' => $activations->pluck('feature_key')->values()->toArray(),
+            'features'           => $activations
+                ->mapWithKeys(fn (LicenseFeatureActivation $a) => [
+                    $a->feature_key => $a->validityPayload(),
+                ])
+                ->toArray(),
         ]);
     }
 

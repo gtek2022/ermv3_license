@@ -48,6 +48,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{hash}/features/{featureId}/toggle', [AppController::class, 'toggleFeature'])->name('features.toggle');
         Route::get('/{hash}/features/{featureId}/retrieve-key', [AppController::class, 'retrieveFeatureKey'])->name('features.retrieve-key');
         Route::post('/{hash}/features/{featureId}/regenerate-key', [AppController::class, 'regenerateFeatureKey'])->name('features.regenerate-key');
+        Route::post('/{hash}/features/{featureId}/duration', [AppController::class, 'updateFeatureDuration'])->name('features.duration');
         // Wildcard show LAST
         Route::get('/{hash}', [AppController::class, 'show'])->name('show');
     });

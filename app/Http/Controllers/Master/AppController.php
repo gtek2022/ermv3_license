@@ -104,9 +104,19 @@ class AppController extends Controller
             'description'      => 'nullable|string',
             'category'         => 'nullable|string|max:50',
             'requires_license' => 'boolean',
+            // Lifetime atau berjangka, dipilih eksplisit. Kolom kosong tidak dipakai sebagai penanda
+            // lifetime di form: admin tidak bisa membedakan "sengaja permanen" dari "lupa mengisi",
+            // dan salah satunya menjual modul selamanya tanpa ada yang menyadarinya.
+            'license_validity_mode' => 'nullable|in:lifetime,term',
+            // Dibatasi 3650 hari (10 tahun): di atas itu praktis lifetime, dan angka sebesar itu
+            // hampir selalu salah ketik. Wajib kalau modenya berjangka.
+            'license_duration_days' => 'nullable|integer|min:1|max:3650|required_if:license_validity_mode,term',
+        ], [
+            'license_duration_days.required_if' => 'Isi jumlah hari, atau pilih Lifetime.',
         ]);
 
         $requiresLicense = $request->boolean('requires_license');
+        $durationDays = $this->resolveDurationDays($data);
 
         $feature = MasterAppFeature::create([
             'app_code'         => $app->code,
@@ -116,6 +126,9 @@ class AppController extends Controller
             'category'         => $data['category'] ?? null,
             'is_active'        => true,
             'requires_license' => $requiresLicense,
+            // Masa aktif hanya berarti untuk fitur berlisensi: fitur gratis tidak pernah diaktivasi,
+            // jadi tidak ada saat mulai untuk menghitung tenggatnya.
+            'license_duration_days' => $requiresLicense ? $durationDays : null,
             'created_by'       => auth()->id(),
         ]);
 
@@ -127,9 +140,81 @@ class AppController extends Controller
         $message = 'Feature "' . $feature->name . '" added.';
         if ($plainKey) {
             $message .= ' Feature License Key: ' . $plainKey . ' — Catat segera, tidak akan ditampilkan lagi.';
+            $message .= ' Masa aktif: ' . $feature->validityLabel() . '.';
         }
 
         return back()->with('success', $message);
+    }
+
+    /**
+     * Ubah masa aktif FLK sebuah fitur yang sudah terdaftar.
+     *
+     * Perlu berdiri sendiri karena semua fitur sudah dibuat sebelum masa aktif ada. Tanpa ini, satu-
+     * satunya cara memberi tenggat pada fitur lama adalah menghapus lalu mendaftarkannya ulang, yang
+     * mencabut setiap aktivasi yang sedang berjalan.
+     *
+     * Aktivasi yang sudah berjalan tidak diubah: tenggatnya sudah dicap di license_feature_activations
+     * dan itu yang benar-benar dijual ke pelanggan tersebut. Masa aktif baru berlaku untuk aktivasi
+     * berikutnya - termasuk perpanjangan, karena aktivasi ulang menghitung ulang dari saat itu.
+     */
+    public function updateFeatureDuration(Request $request, string $hash, int $featureId): RedirectResponse
+    {
+        $this->findOrFail($hash);
+        $feature = MasterAppFeature::findOrFail($featureId);
+
+        $data = $request->validate([
+            'license_validity_mode' => 'nullable|in:lifetime,term',
+            'license_duration_days' => 'nullable|integer|min:1|max:3650|required_if:license_validity_mode,term',
+        ], [
+            'license_duration_days.required_if' => 'Isi jumlah hari, atau pilih Lifetime.',
+        ]);
+
+        if (! $feature->requires_license) {
+            return back()->withErrors(['error' => 'Fitur gratis tidak punya masa aktif.']);
+        }
+
+        $feature->update(['license_duration_days' => $this->resolveDurationDays($data)]);
+
+        $liveCount = LicenseFeatureActivation::where('feature_key', $feature->feature_key)
+            ->where('app_code', $feature->app_code)
+            ->live()
+            ->count();
+
+        $message = $feature->isLifetime()
+            ? 'Masa aktif "' . $feature->name . '" sekarang Lifetime - aktivasi baru tidak akan kedaluwarsa.'
+            : 'Masa aktif "' . $feature->name . '" sekarang ' . $feature->license_duration_days . ' hari.';
+
+        if ($liveCount > 0) {
+            $message .= ' ' . $liveCount . ' aktivasi yang sedang berjalan tetap memakai tenggat lamanya;'
+                . ' masa aktif baru berlaku saat aktivasi berikutnya.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Terjemahkan pilihan masa aktif dari form menjadi nilai kolomnya.
+     *
+     * null = lifetime, dan itu satu-satunya penanda lifetime di database. Mode 'lifetime' membuang
+     * angka hari yang mungkin masih tertinggal di input - kalau admin mengetik 30 lalu memilih
+     * Lifetime, yang dia maksud adalah Lifetime.
+     *
+     * Kalau mode tidak dikirim sama sekali (permintaan lama, atau form tanpa radio), jatuh kembali ke
+     * "ada angka berarti berjangka" supaya pemanggil lama tetap bekerja.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveDurationDays(array $data): ?int
+    {
+        $mode = $data['license_validity_mode'] ?? null;
+
+        if ($mode === 'lifetime') {
+            return null;
+        }
+
+        $days = $data['license_duration_days'] ?? null;
+
+        return $days !== null ? (int) $days : null;
     }
 
     public function toggleFeature(string $hash, int $featureId): RedirectResponse

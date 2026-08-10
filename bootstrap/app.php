@@ -29,5 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->call(fn () => \App\Models\LicenseNonce::purgeExpired())->everyTenMinutes();
         // Sync public key to master_configs daily (after key rotation)
         $schedule->command('license:sync-public-key')->daily();
+        // Mark feature activations whose validity period has ended. Housekeeping only - clients lock
+        // on the deadline itself, read from expires_at, so this keeps the status column honest for
+        // reporting rather than being what enforces anything. Hourly so the admin screens do not sit
+        // a whole day behind reality.
+        $schedule->command('license:feature-expire')->hourly()->withoutOverlapping();
     })
     ->create();
