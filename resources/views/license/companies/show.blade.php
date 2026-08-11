@@ -822,6 +822,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         @csrf
                         <button type="submit" class="btn btn-warning btn-sm" style="font-size:.65rem;">Revoke</button>
                     </form>
+                    <form method="POST" action="{{ route('license.companies.usage.delete', [$hash, $u->id]) }}"
+                          data-confirm="Hapus instalasi {{ $m['domain'] ?? $m['hostname'] ?? $u->usage_fingerprint }}? Slot dikembalikan dan tidak bisa di-undo."
+                          data-confirm-type="danger" data-confirm-title="Hapus Instalasi" data-confirm-ok="Ya, Hapus"
+                          style="margin:0;">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-danger btn-sm" style="font-size:.65rem;">Delete</button>
+                    </form>
                 </div>
             </div>
             @endforeach

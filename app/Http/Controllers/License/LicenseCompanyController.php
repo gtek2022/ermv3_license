@@ -914,4 +914,44 @@ class LicenseCompanyController extends Controller
 
         return back()->with('success', 'Usage berhasil di-revoke.');
     }
+
+    /**
+     * Hard-delete a usage slot, freeing it for re-activation.
+     *
+     * Revoke marks a slot as unusable and preserves the audit trail; delete removes it
+     * entirely, returning the slot to the pool. Used to clean up stale installations that
+     * no longer exist (e.g. decommissioned eproc) so the slot count on the admin page is
+     * accurate and a new installation can take its place.
+     */
+    public function deleteUsage(string $hash, int $usageId): RedirectResponse
+    {
+        $licenseCompany = $this->findOrFail($hash);
+
+        $pkgLicense = License::where('key_hash', $licenseCompany->license_key_hash)->first();
+        if (! $pkgLicense) {
+            return back()->withErrors(['error' => 'Package License record not found.']);
+        }
+
+        $usage = $pkgLicense->usages()->where('id', $usageId)->first();
+        if (! $usage) {
+            return back()->withErrors(['error' => 'Usage tidak ditemukan untuk lisensi ini.']);
+        }
+
+        $fingerprint = $usage->usage_fingerprint;
+        $meta = is_string($usage->meta) ? json_decode($usage->meta, true) : ($usage->meta ?? []);
+        $domain = $meta['domain'] ?? $meta['hostname'] ?? substr($fingerprint, 0, 16);
+
+        $usage->delete();
+
+        // Also delete (not revoke) our installation row — this site is gone, not just deactivated
+        \App\Models\LicenseInstallation::where('license_company_id', $licenseCompany->id)
+            ->where('fingerprint', $fingerprint)
+            ->delete();
+
+        LicenseLogsAudit::record('usage_deleted', 'license_company', $licenseCompany->id, [
+            'previous' => ['usage_id' => $usageId, 'domain' => $domain, 'fingerprint' => substr($fingerprint, 0, 16) . '...'],
+        ]);
+
+        return back()->with('success', 'Instalasi "' . $domain . '" dihapus — slot dikembalikan.');
+    }
 }
