@@ -501,13 +501,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 @elseif($isSuspended)
                                     <span class="badge badge-warning" style="font-size:.6rem;">⏸ Suspend</span>
                                 @elseif($isRevoked)
-                                    {{-- Dibedakan dari "belum pernah diberikan": yang ini pernah ada
-                                         lalu dicabut, dan itu keputusan yang bisa dibalik dengan satu
-                                         tombol. Dua-duanya dulu tampil "✗ Tidak" sehingga tidak ada
-                                         cara membedakannya dari halaman ini. --}}
                                     <span class="badge badge-secondary" style="font-size:.6rem;background:#fee2e2;color:#991b1b;">✗ Dicabut</span>
                                 @else
-                                    <span class="badge badge-secondary" style="font-size:.6rem;">✗ Tidak</span>
+                                    {{-- Belum pernah diberikan ke lisensi ini --}}
+                                    <span class="badge badge-secondary" style="font-size:.6rem;background:#f1f5f9;color:#64748b;">— Belum</span>
                                 @endif
                             </td>
 
