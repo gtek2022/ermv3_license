@@ -227,6 +227,10 @@
                                 <td style="font-size:.66rem;color:#64748b;">{{ $info['first_seen'] }}</td>
                                 <td style="font-size:.66rem;color:#64748b;">{{ $info['last_seen'] }}</td>
                                 <td>
+                                    {{-- Dua langkah, sengaja: Cabut selagi masih hidup, Hapus setelah
+                                         tidak ada yang hidup. Jadi satu klik tidak bisa menghapus
+                                         catatan instalasi yang sedang dipakai pelanggan. --}}
+                                    <div style="display:flex;gap:.3rem;justify-content:flex-end;">
                                     @if($info['live'] > 0)
                                     <form method="POST" action="{{ route('master.apps.revoke-installation', Hashids::encode($app->id)) }}"
                                         data-confirm="Cabut {{ $info['live'] }} aktivasi instalasi ini? Kalau instalasi ini masih hidup, modulnya akan terkunci dan perlu aktivasi FLK ulang."
@@ -237,7 +241,18 @@
                                             Cabut semua
                                         </button>
                                     </form>
+                                    @else
+                                    <form method="POST" action="{{ route('master.apps.delete-installation', Hashids::encode($app->id)) }}"
+                                        data-confirm="Hapus permanen {{ $info['total'] }} catatan aktivasi instalasi ini? Tidak ada aktivasi yang hidup, jadi tidak ada yang kehilangan akses — hanya membersihkan data lama."
+                                        data-confirm-type="danger" data-confirm-title="Hapus Catatan Instalasi" data-confirm-ok="Ya, Hapus">
+                                        @csrf @method('DELETE')
+                                        <input type="hidden" name="installation_uuid" value="{{ $uuid }}">
+                                        <button type="submit" class="btn btn-danger btn-sm" style="font-size:.62rem;padding:.15rem .45rem;">
+                                            Hapus
+                                        </button>
+                                    </form>
                                     @endif
+                                    </div>
                                 </td>
                             </tr>
                             @endforeach
@@ -306,6 +321,10 @@
                                         @endif
                                     </div>
                                     <form method="POST" action="{{ route('master.apps.features.duration', [Hashids::encode($app->id), $feat->id]) }}"
+                                        data-confirm="Ubah masa aktif FLK &quot;{{ $feat->name }}&quot;? Hanya berlaku untuk aktivasi berikutnya — {{ $liveNow }} aktivasi yang sedang berjalan tetap memakai tenggat lamanya."
+                                        data-confirm-type="warning"
+                                        data-confirm-title="Ubah Masa Aktif FLK"
+                                        data-confirm-ok="Ya, Simpan"
                                         style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
                                         @csrf
                                         <label style="display:flex;align-items:center;gap:.15rem;font-size:.62rem;cursor:pointer;">

@@ -34,5 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // reporting rather than being what enforces anything. Hourly so the admin screens do not sit
         // a whole day behind reality.
         $schedule->command('license:feature-expire')->hourly()->withoutOverlapping();
+        // Trim the heartbeat log. It is the one table here that grows without bound - one row per
+        // install per heartbeat, forever - and nothing removed any of them until this.
+        $schedule->command('license:prune-logs')->dailyAt('03:20')->withoutOverlapping();
     })
     ->create();

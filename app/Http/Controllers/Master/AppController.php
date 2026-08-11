@@ -287,6 +287,56 @@ class AppController extends Controller
     }
 
     /**
+     * Hapus permanen semua catatan aktivasi satu instalasi.
+     *
+     * Cabut menyisakan barisnya sebagai jejak audit, dan itu benar untuk instalasi yang baru saja
+     * dimatikan - siapa yang mencabut, kapan. Tapi untuk instalasi hantu, jejak itu tidak menjelaskan
+     * apa pun: fingerprint dan uuid-nya sudah tidak bisa dicocokkan ke mesin mana pun karena APP_KEY
+     * yang membentuknya sudah tidak ada. Yang tertinggal hanya baris yang membuat setiap hitungan
+     * harus disaring.
+     *
+     * Hanya boleh untuk instalasi yang tidak punya aktivasi hidup sama sekali. Jadi urutannya selalu
+     * Cabut dulu, Hapus kemudian - satu klik tidak bisa menghapus catatan instalasi yang sedang
+     * dipakai pelanggan.
+     */
+    public function deleteInstallation(Request $request, string $hash): RedirectResponse
+    {
+        $app = $this->findOrFail($hash);
+
+        $data = $request->validate([
+            'installation_uuid' => 'required|string|max:64',
+        ]);
+
+        $rows = LicenseFeatureActivation::where('app_code', $app->code)
+            ->where('installation_uuid', $data['installation_uuid']);
+
+        $liveCount = (clone $rows)->live()->count();
+
+        if ($liveCount > 0) {
+            return back()->withErrors([
+                'error' => 'Instalasi ini masih punya ' . $liveCount . ' aktivasi hidup. Cabut dulu, baru hapus.',
+            ]);
+        }
+
+        $deleted = $rows->count();
+
+        if ($deleted === 0) {
+            return back()->withErrors(['error' => 'Tidak ada catatan untuk instalasi itu.']);
+        }
+
+        $rows->delete();
+
+        LogAudit::record('deleted', 'license_feature_activations', [
+            'subject_type'  => 'LicenseFeatureActivation',
+            'subject_label' => $app->code . ' / ' . substr($data['installation_uuid'], 0, 13),
+            'previous'      => ['rows' => $deleted, 'installation_uuid' => $data['installation_uuid']],
+        ]);
+
+        return back()->with('success', $deleted . ' catatan aktivasi instalasi '
+            . substr($data['installation_uuid'], 0, 13) . '… dihapus permanen.');
+    }
+
+    /**
      * Terjemahkan pilihan masa aktif dari form menjadi nilai kolomnya.
      *
      * null = lifetime, dan itu satu-satunya penanda lifetime di database. Mode 'lifetime' membuang

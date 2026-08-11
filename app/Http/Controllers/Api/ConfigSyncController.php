@@ -10,7 +10,6 @@ use App\Models\LicenseNonce;
 use App\Models\MasterAppConfig;
 use App\Models\MasterAppFeature;
 use App\Models\MasterConfig;
-use App\Models\MasterFeatureFlag;
 use App\Services\Licensing\SigningService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +24,8 @@ use Illuminate\Http\Request;
  *   { app_code, license_key, fingerprint, current_config_version, timestamp, nonce }
  *
  * Response:
- *   { success, configs, feature_flags, enforcement_policy, version, signed_payload, expires_at }
+ *   { success, configs, licensed_features, feature_catalog, enforcement_policy, version,
+ *     signed_payload, expires_at }
  */
 class ConfigSyncController extends Controller
 {
@@ -80,17 +80,20 @@ class ConfigSyncController extends Controller
         LicenseNonce::consume($data['nonce']);
 
         // ── Build config payload ──────────────────────────────────────────────
+        //
+        // feature_flags used to be built and shipped here. It is gone: nothing on any client ever read
+        // it - getFeatureFlags() exists in three of them with no callers - and master_feature_flags
+        // never held a single row. Clients guard the key with isset(), so dropping it changes nothing
+        // for them beyond no longer writing a file they never opened.
         $installationUuid = $data['installation_uuid'] ?? null;
         $configs          = $this->buildConfigs($data['app_code']);
-        $flags            = $this->buildFeatureFlags($data['app_code']);
         $licensedFeatures = $this->buildLicensedFeatures($licenseApp);
         $featureCatalog   = $this->buildFeatureCatalog($data['app_code'], $installationUuid);
         $policy           = $this->buildEnforcementPolicy($license->id);
-        $version          = 'v' . crc32(json_encode($configs) . json_encode($flags) . json_encode($licensedFeatures));
+        $version          = 'v' . crc32(json_encode($configs) . json_encode($licensedFeatures) . json_encode($featureCatalog));
 
         $payload = [
             'configs'             => $configs,
-            'feature_flags'       => $flags,
             'licensed_features'   => $licensedFeatures,
             'feature_catalog'     => $featureCatalog,
             'enforcement_policy'  => $policy,
@@ -144,16 +147,6 @@ class ConfigSyncController extends Controller
             ->toArray();
 
         return array_merge($global, $appConfigs);
-    }
-
-    private function buildFeatureFlags(string $appCode): array
-    {
-        return MasterFeatureFlag::where(function ($q) use ($appCode) {
-            $q->where('app_scope', $appCode)->orWhere('app_scope', '*');
-        })
-        ->get()
-        ->mapWithKeys(fn ($f) => [$f->feature_key => $f->enabled])
-        ->toArray();
     }
 
     /**

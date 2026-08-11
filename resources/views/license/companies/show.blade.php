@@ -350,6 +350,18 @@ document.addEventListener('DOMContentLoaded', function() {
             $allMasterFeatures = \App\Models\MasterAppFeature::where('app_code', $la->app_code)->get();
             $hasFeatureRestrictions = $la->features->isNotEmpty();
             $activeCount = $la->features->where('status','active')->count();
+
+            /*
+             * Resolved once per app instead of once per feature row. It only depends on $la->app_code,
+             * and it was being looked up inside the row - one query per feature, fifteen per app, for
+             * an answer that cannot change between rows.
+             *
+             * Also hoisted because three cells now need it (master toggle, FLK key, masa aktif) and a
+             * variable defined in one cell and read in the next two is the kind of thing that breaks
+             * silently the first time somebody reorders the columns.
+             */
+            $masterAppId = \App\Models\MasterApp::where('code', $la->app_code)->value('id');
+            $masterAppHash = $masterAppId ? Hashids::encode($masterAppId) : null;
         @endphp
         <div style="border-bottom:1px solid #f1f5f9;padding:1rem 1.25rem;">
 
@@ -383,6 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <th>Status Master</th>
                             <th>Status Lisensi</th>
                             <th>Kunci FLK</th>
+                            <th>Masa Aktif</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -395,6 +408,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             $isLicActive    = $isInLicense && $licStatus === 'active';
                             $isSuspended    = $isInLicense && $licStatus === 'suspended';
                             $requiresLic    = $feat->requires_license;
+
+                            /*
+                             * Aktivasi yang benar-benar berjalan, dan yang tenggatnya sudah lewat.
+                             *
+                             * Hitungan di sini dulu memakai status='active' saja, jadi instalasi yang
+                             * masa aktifnya sudah habis masih dilaporkan aktif padahal modulnya sudah
+                             * terkunci di sisi client - halaman ini menjanjikan sesuatu yang tidak
+                             * lagi benar. live() dan lapsed() memisahkan keduanya.
+                             */
+                            $liveActCount = $requiresLic
+                                ? \App\Models\LicenseFeatureActivation::where('feature_key', $feat->feature_key)
+                                    ->where('app_code', $la->app_code)->live()->count()
+                                : 0;
+                            $lapsedActCount = $requiresLic
+                                ? \App\Models\LicenseFeatureActivation::where('feature_key', $feat->feature_key)
+                                    ->where('app_code', $la->app_code)->lapsed()->count()
+                                : 0;
 
                             // Row background
                             if (!$feat->is_active) {
@@ -430,8 +460,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             {{-- Master status (admin toggle) --}}
                             <td>
-                                @php $masterAppId = \App\Models\MasterApp::where('code',$la->app_code)->value('id'); @endphp
-                                <form method="POST" action="{{ route('master.apps.features.toggle', [Hashids::encode($masterAppId), $feat->id]) }}">
+                                {{-- Konfirmasi karena tombol ini mengenai SEMUA lisensi, bukan hanya
+                                     yang sedang dibuka - satu klik di halaman satu pelanggan bisa
+                                     mematikan fitur itu untuk semua pelanggan lain. --}}
+                                <form method="POST" action="{{ route('master.apps.features.toggle', [$masterAppHash, $feat->id]) }}"
+                                    data-confirm="{{ $feat->is_active ? 'Nonaktifkan' : 'Aktifkan' }} fitur &quot;{{ $feat->name }}&quot; di SEMUA lisensi, bukan hanya pelanggan ini?"
+                                    data-confirm-type="warning"
+                                    data-confirm-title="{{ $feat->is_active ? 'Nonaktifkan' : 'Aktifkan' }} Fitur (Global)"
+                                    data-confirm-ok="Ya, Lanjutkan">
                                     @csrf
                                     <button type="submit"
                                         class="badge {{ $feat->is_active ? 'badge-success' : 'badge-secondary' }}"
@@ -472,11 +508,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 </button>
                                             </form>
                                             <div id="flk-lic-{{ $feat->id }}" style="display:none;"></div>
-                                            @php
-                                                $actCount = \App\Models\LicenseFeatureActivation::where('feature_key',$feat->feature_key)->where('app_code',$la->app_code)->where('status','active')->count();
-                                            @endphp
-                                            @if($actCount > 0)
-                                            <span style="font-size:.62rem;color:#166534;">{{ $actCount }} instalasi aktif</span>
+                                            @if($liveActCount > 0)
+                                            <span style="font-size:.62rem;color:#166534;">{{ $liveActCount }} instalasi aktif</span>
+                                            @endif
+                                            @if($lapsedActCount > 0)
+                                            <span style="font-size:.62rem;color:#b91c1c;">{{ $lapsedActCount }} masa aktif habis</span>
                                             @endif
                                         </div>
                                     @else
@@ -487,12 +523,57 @@ document.addEventListener('DOMContentLoaded', function() {
                                 @endif
                             </td>
 
+                            {{-- Masa aktif FLK. Sama seperti di halaman Master → Apps, dan menulis ke
+                                 kolom yang sama: masa aktif adalah properti kunci fiturnya, bukan
+                                 properti lisensi pelanggan ini. Diletakkan di sini juga karena inilah
+                                 halaman tempat orang mengurus apa yang dibeli seorang pelanggan, jadi
+                                 memaksa pindah halaman hanya untuk mengubah jangkanya tidak masuk akal. --}}
+                            <td>
+                                @if($requiresLic)
+                                    <div style="margin-bottom:.25rem;">
+                                        @if($feat->isLifetime())
+                                            <span class="badge badge-blue" style="font-size:.58rem;">∞ Lifetime</span>
+                                        @else
+                                            <span class="badge badge-secondary" style="font-size:.58rem;">{{ $feat->license_duration_days }} hari</span>
+                                        @endif
+                                    </div>
+                                    <form method="POST" action="{{ route('master.apps.features.duration', [$masterAppHash, $feat->id]) }}"
+                                        data-confirm="Ubah masa aktif FLK &quot;{{ $feat->name }}&quot;? Berlaku global untuk semua lisensi app {{ $la->app_code }}, dan hanya untuk aktivasi berikutnya — {{ $liveActCount }} aktivasi yang sedang berjalan tetap memakai tenggat lamanya."
+                                        data-confirm-type="warning"
+                                        data-confirm-title="Ubah Masa Aktif FLK"
+                                        data-confirm-ok="Ya, Simpan"
+                                        style="display:flex;align-items:center;gap:.25rem;flex-wrap:wrap;">
+                                        @csrf
+                                        <label style="display:flex;align-items:center;gap:.12rem;font-size:.6rem;cursor:pointer;">
+                                            <input type="radio" name="license_validity_mode" value="lifetime"
+                                                @checked($feat->isLifetime()) data-validity-radio
+                                                style="accent-color:#1a3a6b;">∞
+                                        </label>
+                                        <label style="display:flex;align-items:center;gap:.12rem;font-size:.6rem;cursor:pointer;">
+                                            <input type="radio" name="license_validity_mode" value="term"
+                                                @checked(! $feat->isLifetime()) data-validity-radio
+                                                style="accent-color:#1a3a6b;">hari
+                                        </label>
+                                        <input type="number" name="license_duration_days" min="1" max="3650"
+                                            value="{{ $feat->license_duration_days }}" placeholder="30"
+                                            @disabled($feat->isLifetime()) data-validity-days
+                                            style="width:48px;padding:.12rem .25rem;font-size:.65rem;border:1px solid #cbd5e1;border-radius:4px;">
+                                        <button type="submit" class="btn btn-secondary btn-sm"
+                                            style="font-size:.58rem;padding:.1rem .3rem;">Simpan</button>
+                                    </form>
+                                @else
+                                    <span style="font-size:.65rem;color:#94a3b8;">—</span>
+                                @endif
+                            </td>
+
                             {{-- Actions --}}
                             <td>
                                 <div style="display:flex;flex-direction:column;gap:.25rem;">
                                     @if($isLicActive)
                                         {{-- Suspend from license --}}
-                                        <form method="POST" action="{{ route('license.companies.features.toggle', [$hash, $licensedFeat->id]) }}">
+                                        <form method="POST" action="{{ route('license.companies.features.toggle', [$hash, $licensedFeat->id]) }}"
+                                            data-confirm="Suspend fitur &quot;{{ $feat->name }}&quot; untuk pelanggan ini? Modulnya akan terkunci pada sync berikutnya."
+                                            data-confirm-type="warning" data-confirm-title="Suspend Fitur" data-confirm-ok="Ya, Suspend">
                                             @csrf
                                             <button type="submit" class="btn btn-warning btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">Suspend</button>
                                         </form>
@@ -504,13 +585,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </form>
                                     @elseif($isSuspended)
                                         {{-- Reinstate --}}
-                                        <form method="POST" action="{{ route('license.companies.features.toggle', [$hash, $licensedFeat->id]) }}">
+                                        <form method="POST" action="{{ route('license.companies.features.toggle', [$hash, $licensedFeat->id]) }}"
+                                            data-confirm="Aktifkan kembali fitur &quot;{{ $feat->name }}&quot; untuk pelanggan ini?"
+                                            data-confirm-type="info" data-confirm-title="Aktifkan Fitur" data-confirm-ok="Ya, Aktifkan">
                                             @csrf
                                             <button type="submit" class="btn btn-success btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">Aktifkan</button>
                                         </form>
                                     @elseif($hasFeatureRestrictions)
                                         {{-- Add to license --}}
-                                        <form method="POST" action="{{ route('license.companies.features.add', $hash) }}">
+                                        <form method="POST" action="{{ route('license.companies.features.add', $hash) }}"
+                                            data-confirm="Tambahkan fitur &quot;{{ $feat->name }}&quot; ke lisensi pelanggan ini?@if($requiresLic) Fitur ini berlisensi, jadi client masih perlu menukarkan FLK-nya.@endif"
+                                            data-confirm-type="info" data-confirm-title="Tambah Fitur ke Lisensi" data-confirm-ok="Ya, Tambah">
                                             @csrf
                                             <input type="hidden" name="license_app_id" value="{{ $la->id }}">
                                             <input type="hidden" name="feature_key" value="{{ $feat->feature_key }}">
@@ -551,6 +636,37 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+{{-- Kolom hari pada editor masa aktif hanya hidup kalau modenya Berjangka. Dinonaktifkan, bukan
+     sekadar diabaikan, supaya tidak ada angka nyangkut yang terlihat berlaku padahal pilihannya
+     Lifetime. Field disabled tidak ikut terkirim, jadi required_if di server tetap yang menjaga.
+     Di-scope per form karena satu halaman ini bisa berisi puluhan editor sekaligus. --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-validity-days]').forEach(function (days) {
+        var scope = days.closest('form');
+        if (!scope) return;
+        var radios = scope.querySelectorAll('[data-validity-radio]');
+        if (!radios.length) return;
+
+        function sync(fromUser) {
+            var term = scope.querySelector('[data-validity-radio][value="term"]');
+            var isTerm = term && term.checked;
+            days.disabled = !isTerm;
+            if (!isTerm) {
+                days.value = '';
+            } else if (fromUser) {
+                days.focus();
+            }
+        }
+
+        radios.forEach(function (r) {
+            r.addEventListener('change', function () { sync(true); });
+        });
+        sync(false);
+    });
+});
+</script>
+
 {{-- Active license usages — manage installation slots --}}
 <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-header">
@@ -585,6 +701,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     $m = [];
                 }
+
+                /*
+                 * Two copies of this metadata exist, and the fresher one has to win.
+                 *
+                 * The top level of usage.meta is written once, when the installation activates, and is
+                 * never touched again. Every heartbeat since then merges the client's current report
+                 * into meta.client_data instead (see the package UsageController).
+                 *
+                 * Reading only the top level is why this panel showed eproc.intipowerabadi.com for an
+                 * installation that has been answering as crm.intipowerabadi.com for days: the client
+                 * was reporting the new domain correctly and the page was showing the value captured
+                 * back at activation.
+                 *
+                 * client_data wins where it has a value, the activation snapshot fills the gaps, so
+                 * records that predate heartbeat metadata still render.
+                 */
+                $live = $m['client_data']['meta'] ?? [];
+                $live = is_array($live) ? $live : [];
+                $m = array_merge($m, array_filter($live, fn ($v) => $v !== null && $v !== ''));
+
+                // user_agent sits beside meta in the client's payload, not inside it, and the column on
+                // the usage row is only set at activation - same staleness, same fix.
+                $liveUserAgent = $m['client_data']['user_agent'] ?? null;
+
                 // Match installation row for app_version etc.
                 $inst = \App\Models\LicenseInstallation::where('license_company_id', $license->id)
                     ->where('fingerprint', $u->usage_fingerprint)
@@ -632,7 +772,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div style="display:flex;gap:.5rem;padding:.15rem 0;">
                             <span style="color:#94a3b8;width:100px;flex-shrink:0;font-size:.65rem;text-transform:uppercase;">User Agent</span>
-                            <span style="font-family:monospace;color:#1e293b;word-break:break-all;font-size:.65rem;">{{ $u->user_agent ?? '—' }}</span>
+                            <span style="font-family:monospace;color:#1e293b;word-break:break-all;font-size:.65rem;">{{ $liveUserAgent ?? $u->user_agent ?? '—' }}</span>
                         </div>
                     </div>
                 </div>

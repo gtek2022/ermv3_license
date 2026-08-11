@@ -7,7 +7,7 @@ use App\Http\Controllers\License\LicenseCompanyController;
 use App\Http\Controllers\Master\AppController;
 use App\Http\Controllers\Master\CompanyController;
 use App\Http\Controllers\Master\ConfigController;
-use App\Http\Controllers\Master\FeatureFlagController;
+
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,6 +51,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{hash}/features/{featureId}/duration', [AppController::class, 'updateFeatureDuration'])->name('features.duration');
         Route::post('/{hash}/features/{featureId}/revoke-installation', [AppController::class, 'revokeFeatureInstallation'])->name('features.revoke-installation');
         Route::post('/{hash}/revoke-installation', [AppController::class, 'revokeInstallation'])->name('revoke-installation');
+        Route::delete('/{hash}/installation', [AppController::class, 'deleteInstallation'])->name('delete-installation');
         // Wildcard show LAST
         Route::get('/{hash}', [AppController::class, 'show'])->name('show');
     });
@@ -67,14 +68,21 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{hash}', [ConfigController::class, 'destroy'])->name('destroy');
     });
 
-    // ── Master: Feature Flags ─────────────────────────────────────────────────
-    Route::prefix('master/feature-flags')->name('master.flags.')->group(function () {
-        Route::get('/', [FeatureFlagController::class, 'index'])->name('index');
-        Route::post('/', [FeatureFlagController::class, 'store'])->name('store');
-        Route::post('/{hash}/toggle', [FeatureFlagController::class, 'toggle'])->name('toggle');
-        Route::put('/{hash}', [FeatureFlagController::class, 'update'])->name('update');
-        Route::delete('/{hash}', [FeatureFlagController::class, 'destroy'])->name('destroy');
-    });
+    /*
+     * Feature Flags dihapus.
+     *
+     * Ada layar CRUD lengkap, tabelnya, dan plumbing sampai ke storage terenkripsi di tiga aplikasi
+     * client - tapi tidak ada satu pun yang membacanya. getFeatureFlags() di ipa-crm, ipa-absensi dan
+     * ermv3-new hanya punya definisi, tanpa pemanggil. master_feature_flags juga 0 baris di produksi:
+     * tidak ada yang pernah punya alasan mengisinya.
+     *
+     * Kolom rollout_percentage bahkan divalidasi dan disimpan, tapi buildFeatureFlags() hanya
+     * mengirim `enabled`. Jadi mengisi 50% akan tetap menyalakan penuh - layar yang menjanjikan
+     * sesuatu yang tidak pernah terjadi, dan itu lebih menyesatkan daripada tidak ada sama sekali.
+     *
+     * Kalau nanti benar-benar dibutuhkan, bentuknya jelas dari git history dan lebih baik dibangun
+     * ulang bersama sisi client yang benar-benar membacanya.
+     */
 
     // ── License: Companies (bundles) ──────────────────────────────────────────
     Route::prefix('licenses')->name('license.companies.')->group(function () {
