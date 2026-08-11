@@ -464,13 +464,40 @@ class LicenseCompanyController extends Controller
             ->where('license_company_id', $licenseCompany->id)
             ->firstOrFail();
 
-        // Prevent duplicate
-        $exists = \App\Models\LicenseAppFeature::where('license_app_id', $licenseApp->id)
+        /*
+         * Sudah pernah ada? Hidupkan kembali, jangan menolak.
+         *
+         * Ini dulu mengembalikan "Feature already licensed for this app." untuk baris apa pun yang
+         * sudah ada - termasuk yang statusnya 'revoked'. Padahal baris yang dicabut justru yang
+         * paling butuh tombol ini, dan halaman lisensi mengarahkan tepat ke sini untuk baris
+         * semacam itu. Hasilnya jalan buntu: fitur yang pernah dicabut tidak bisa diberikan lagi
+         * lewat UI, sementara FLK-nya tetap bisa ditukarkan - jadi pelanggan melihat modul terkunci
+         * dengan alasan "tidak termasuk lisensi" padahal adminnya merasa sudah menerbitkan kuncinya.
+         *
+         * Menolak hanya kalau memang sudah aktif, karena di situ tidak ada yang perlu dikerjakan.
+         */
+        $existing = \App\Models\LicenseAppFeature::where('license_app_id', $licenseApp->id)
             ->where('feature_key', $data['feature_key'])
-            ->exists();
+            ->first();
 
-        if ($exists) {
-            return back()->withErrors(['feature_key' => 'Feature already licensed for this app.']);
+        if ($existing) {
+            if ($existing->status === 'active') {
+                return back()->withErrors(['feature_key' => 'Feature already licensed for this app.']);
+            }
+
+            $previousStatus = $existing->status;
+
+            $existing->update([
+                'status'      => 'active',
+                'valid_until' => $data['valid_until'] ?? $existing->valid_until,
+            ]);
+
+            LicenseLogsAudit::record('feature_reinstated', 'license_app', $licenseApp->id, [
+                'previous' => ['feature_key' => $existing->feature_key, 'status' => $previousStatus],
+                'new'      => ['feature_key' => $existing->feature_key, 'status' => 'active'],
+            ]);
+
+            return back()->with('success', 'Feature "' . $data['feature_key'] . '" diaktifkan kembali (sebelumnya ' . $previousStatus . ').');
         }
 
         \App\Models\LicenseAppFeature::create([
@@ -504,12 +531,26 @@ class LicenseCompanyController extends Controller
             ->firstOrFail();
 
         LicenseLogsAudit::record('feature_removed', 'license_app', $licenseApp->id, [
-            'previous' => ['feature_key' => $feature->feature_key],
+            'previous' => ['feature_key' => $feature->feature_key, 'status' => $feature->status],
         ]);
 
-        $feature->delete();
+        /*
+         * Dicabut, bukan dihapus barisnya.
+         *
+         * ConfigSyncController::buildLicensedFeatures() memakai aturan "tidak ada baris sama sekali
+         * berarti semua fitur berlisensi" untuk lisensi tingkat-app yang memang tanpa batasan fitur.
+         * Aturan itu wajar, tapi berbahaya kalau dikombinasikan dengan hard delete: menghapus baris
+         * terakhir satu per satu membuat lisensi yang tadinya dibatasi berubah menjadi tanpa batasan,
+         * sehingga SEMUA modul - termasuk yang tidak pernah dibeli - ikut terbuka pada sync
+         * berikutnya. Kebalikan dari maksud tombol ini.
+         *
+         * Menyetel status='revoked' menghasilkan efek yang diinginkan (licensed=false, modul terkunci
+         * pada sync berikutnya), mempertahankan jejak audit, membuat himpunan batasan tetap tidak
+         * kosong, dan bisa dibalik lewat tombol Aktifkan.
+         */
+        $feature->update(['status' => 'revoked']);
 
-        return back()->with('success', 'Feature removed from license.');
+        return back()->with('success', 'Fitur "' . $feature->feature_key . '" dicabut dari lisensi — modul terkunci di client pada sync berikutnya.');
     }
 
     /**

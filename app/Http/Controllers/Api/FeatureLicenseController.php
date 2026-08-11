@@ -57,6 +57,47 @@ class FeatureLicenseController extends Controller
             return $this->error('FEATURE_DISABLED', 'This feature is currently disabled by the administrator.', 403);
         }
 
+        /*
+         * Apakah lisensi instalasi ini memang mencakup fitur tersebut?
+         *
+         * Menukarkan FLK dan berhak atas modulnya adalah dua hal berbeda: FLK mengikat modul ke satu
+         * instalasi, entitlement (license_app_features) menyatakan lisensinya membeli modul itu. Client
+         * mewajibkan keduanya, dan itu memang disengaja.
+         *
+         * Yang tidak disengaja adalah endpoint ini dulu mencatat aktivasi tanpa melihat entitlement.
+         * Akibatnya kunci yang tidak akan pernah membuka apa pun tetap "berhasil": halaman admin
+         * melaporkan "1 instalasi aktif" di baris yang Status Lisensi-nya "✗ Tidak", dan pelanggan
+         * memasukkan kunci yang benar lalu tetap melihat modulnya terkunci. Dua-duanya membuat FLK
+         * terlihat rusak padahal justru bekerja sesuai rancangan.
+         *
+         * Jadi ditolak lebih awal, dengan alasan yang menyebut tindakan yang benar. Hanya ditegakkan
+         * kalau lisensinya memang bisa ditemukan DAN memang mendeklarasikan batasan fitur - aturan
+         * "tanpa baris berarti semua berlisensi" dipertahankan sama seperti di
+         * ConfigSyncController::buildLicensedFeatures(), dan instalasi yang belum terdaftar tidak
+         * dihalangi supaya aktivasi pertama kali tidak ikut terkunci.
+         */
+        $installation = \App\Models\LicenseInstallation::where('installation_uuid', $data['installation_uuid'])
+            ->where('app_code', $data['app_code'])
+            ->first();
+
+        if ($installation && $installation->license_app_id) {
+            $entitlements = \App\Models\LicenseAppFeature::where('license_app_id', $installation->license_app_id)->get();
+
+            if ($entitlements->isNotEmpty()) {
+                $entitlement = $entitlements->firstWhere('feature_key', $feature->feature_key);
+
+                if (! $entitlement || ! $entitlement->isActive()) {
+                    return $this->error(
+                        'FEATURE_NOT_ENTITLED',
+                        'Modul "' . $feature->name . '" belum termasuk dalam lisensi instalasi ini, '
+                            . 'jadi FLK-nya tidak akan membukanya. Hubungi Gemilang untuk menambahkan '
+                            . 'modul ini ke lisensi Anda terlebih dahulu.',
+                        403
+                    );
+                }
+            }
+        }
+
         // Create or update activation record
         $activation = LicenseFeatureActivation::updateOrCreate(
             [

@@ -410,6 +410,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             $requiresLic    = $feat->requires_license;
 
                             /*
+                             * Entitlement yang ada tapi tidak aktif dan bukan suspend - praktisnya
+                             * 'revoked'.
+                             *
+                             * Dulu keadaan ini tidak punya nama di sini, dan itu membuat barisnya jadi
+                             * jalan buntu: kolom Aksi jatuh ke "+ Tambah", lalu addFeature() menolak
+                             * karena barisnya sudah ada ("Feature already licensed"). Tidak ada satu
+                             * pun tombol yang bisa menghidupkannya kembali, jadi fitur yang pernah
+                             * dicabut tidak mungkin diberikan lagi lewat halaman ini - dan karena FLK
+                             * tetap bisa diaktifkan, hasilnya "1 instalasi aktif" berdampingan dengan
+                             * "✗ Tidak", yang terbaca seperti FLK-nya rusak.
+                             */
+                            $isRevoked = $isInLicense && ! $isLicActive && ! $isSuspended;
+
+                            /*
                              * Aktivasi yang benar-benar berjalan, dan yang tenggatnya sudah lewat.
                              *
                              * Hitungan di sini dulu memakai status='active' saja, jadi instalasi yang
@@ -486,6 +500,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <span class="badge badge-success" style="font-size:.6rem;">✓ Aktif</span>
                                 @elseif($isSuspended)
                                     <span class="badge badge-warning" style="font-size:.6rem;">⏸ Suspend</span>
+                                @elseif($isRevoked)
+                                    {{-- Dibedakan dari "belum pernah diberikan": yang ini pernah ada
+                                         lalu dicabut, dan itu keputusan yang bisa dibalik dengan satu
+                                         tombol. Dua-duanya dulu tampil "✗ Tidak" sehingga tidak ada
+                                         cara membedakannya dari halaman ini. --}}
+                                    <span class="badge badge-secondary" style="font-size:.6rem;background:#fee2e2;color:#991b1b;">✗ Dicabut</span>
                                 @else
                                     <span class="badge badge-secondary" style="font-size:.6rem;">✗ Tidak</span>
                                 @endif
@@ -583,10 +603,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-danger btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">Hapus</button>
                                         </form>
-                                    @elseif($isSuspended)
-                                        {{-- Reinstate --}}
+                                    @elseif($isInLicense)
+                                        {{-- Reinstate.
+                                             Berlaku untuk suspend maupun cabut: keduanya adalah baris
+                                             yang sudah ada dan tinggal dihidupkan, dan toggleFeature()
+                                             memang mengembalikan status apa pun yang bukan 'active'
+                                             menjadi 'active'. Sebelumnya cabang ini hanya untuk
+                                             suspend, sehingga baris yang dicabut tidak punya tombol
+                                             apa pun. --}}
                                         <form method="POST" action="{{ route('license.companies.features.toggle', [$hash, $licensedFeat->id]) }}"
-                                            data-confirm="Aktifkan kembali fitur &quot;{{ $feat->name }}&quot; untuk pelanggan ini?"
+                                            data-confirm="Aktifkan kembali fitur &quot;{{ $feat->name }}&quot; untuk pelanggan ini?@if($requiresLic) Fitur ini berlisensi, jadi client masih perlu menukarkan FLK-nya.@endif"
                                             data-confirm-type="info" data-confirm-title="Aktifkan Fitur" data-confirm-ok="Ya, Aktifkan">
                                             @csrf
                                             <button type="submit" class="btn btn-success btn-sm" style="font-size:.62rem;padding:.2rem .5rem;white-space:nowrap;">Aktifkan</button>
