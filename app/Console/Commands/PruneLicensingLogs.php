@@ -34,8 +34,11 @@ class PruneLicensingLogs extends Command
         $cutoff = now()->subDays($days);
         $dryRun = (bool) $this->option('dry-run');
 
+        // heartbeat_at, not created_at: this table has no timestamps() at all - see the
+        // 2026_05_23_000020 migration - and asking for created_at answered
+        // SQLSTATE[42703] "column does not exist".
         $total = LicenseLogsHeartbeat::count();
-        $stale = LicenseLogsHeartbeat::where('created_at', '<', $cutoff)->count();
+        $stale = LicenseLogsHeartbeat::where('heartbeat_at', '<', $cutoff)->count();
 
         $this->line('heartbeat rows: ' . $total . ', older than ' . $days . ' days: ' . $stale);
 
@@ -51,17 +54,30 @@ class PruneLicensingLogs extends Command
             return self::SUCCESS;
         }
 
-        // Deleted in chunks rather than one statement: this is the largest table here, and a single
-        // unbounded DELETE holds locks for as long as it takes while heartbeats are still arriving.
+        /*
+         * Deleted in batches, by primary key.
+         *
+         * In batches because this is the largest table here and one unbounded DELETE would hold locks
+         * for its whole duration while heartbeats are still arriving.
+         *
+         * By primary key rather than `->limit(1000)->delete()`, because DELETE ... LIMIT is MySQL
+         * syntax and this runs on PostgreSQL. Collecting ids first and deleting those is unambiguous
+         * on any driver.
+         */
         $removed = 0;
 
         do {
-            $batch = LicenseLogsHeartbeat::where('created_at', '<', $cutoff)
+            $ids = LicenseLogsHeartbeat::where('heartbeat_at', '<', $cutoff)
+                ->orderBy('id')
                 ->limit(1000)
-                ->delete();
+                ->pluck('id');
 
-            $removed += $batch;
-        } while ($batch > 0);
+            if ($ids->isEmpty()) {
+                break;
+            }
+
+            $removed += LicenseLogsHeartbeat::whereIn('id', $ids)->delete();
+        } while (true);
 
         $this->info($removed . ' row(s) removed. ' . LicenseLogsHeartbeat::count() . ' remain.');
 
