@@ -76,12 +76,10 @@ class FeatureLicenseController extends Controller
          * ConfigSyncController::buildLicensedFeatures(), dan instalasi yang belum terdaftar tidak
          * dihalangi supaya aktivasi pertama kali tidak ikut terkunci.
          */
-        $installation = \App\Models\LicenseInstallation::where('installation_uuid', $data['installation_uuid'])
-            ->where('app_code', $data['app_code'])
-            ->first();
+        $licenseAppId = $this->resolveLicenseAppId($data['app_code'], $data['installation_uuid'], $data['fingerprint']);
 
-        if ($installation && $installation->license_app_id) {
-            $entitlements = \App\Models\LicenseAppFeature::where('license_app_id', $installation->license_app_id)->get();
+        if ($licenseAppId) {
+            $entitlements = \App\Models\LicenseAppFeature::where('license_app_id', $licenseAppId)->get();
 
             if ($entitlements->isNotEmpty()) {
                 $entitlement = $entitlements->firstWhere('feature_key', $feature->feature_key);
@@ -130,6 +128,55 @@ class FeatureLicenseController extends Controller
             'status'       => 'active',
             'message'      => $message,
         ], $activation->validityPayload()));
+    }
+
+    /**
+     * Which licence is this activation request coming from?
+     *
+     * Awkward because the request does not carry the licence key - it has app_code, the FLK, an
+     * installation uuid and a fingerprint - so the licence has to be inferred. Three attempts, in
+     * descending order of confidence:
+     *
+     *   1. the installation uuid, which is what the client believes it is
+     *   2. the fingerprint, for when the uuid has drifted
+     *   3. the app_code, but only when exactly one active licence uses it
+     *
+     * Step 2 exists because those two identifiers do drift apart in practice. On the crm production
+     * install the registered installation carries uuid 8810071b / fingerprint 18d0cd2e while its
+     * feature activations carry 57e686a0 / bf5ae65d: the client mints a fresh uuid whenever its
+     * encrypted state cannot be read back, and the fingerprint moves with APP_KEY and the database
+     * identity, so a key rotation or a cleared storage directory silently orphans the installation
+     * record while the app keeps working. Matching on only one of the two would have skipped the
+     * check on exactly the installation that prompted it.
+     *
+     * Null means "could not tell", and the caller then allows the activation. That is deliberate: this
+     * is a guard-rail that turns a silently useless activation into a clear refusal, not the boundary
+     * that keeps an unlicensed module shut. The boundary is the client requiring both the activation
+     * and the entitlement, which holds regardless of what this returns.
+     */
+    private function resolveLicenseAppId(string $appCode, string $installationUuid, string $fingerprint): ?int
+    {
+        $installation = \App\Models\LicenseInstallation::where('app_code', $appCode)
+            ->where('installation_uuid', $installationUuid)
+            ->first();
+
+        if (! $installation) {
+            $installation = \App\Models\LicenseInstallation::where('app_code', $appCode)
+                ->where('fingerprint', $fingerprint)
+                ->first();
+        }
+
+        if ($installation && $installation->license_app_id) {
+            return (int) $installation->license_app_id;
+        }
+
+        // Unambiguous single-tenant fallback. Skipped when more than one licence shares the app_code,
+        // because guessing between customers is worse than not checking.
+        $candidates = \App\Models\LicenseApp::where('app_code', $appCode)
+            ->where('status', 'active')
+            ->pluck('id');
+
+        return $candidates->count() === 1 ? (int) $candidates->first() : null;
     }
 
     /**
