@@ -72,9 +72,37 @@ class SyncUsageToInstallation
             $existing->update(array_merge($payload, ['revoked_at' => null, 'revoke_reason' => null]));
         } else {
             LicenseInstallation::create(array_merge($payload, [
-                'installation_uuid' => (string) Str::uuid(),
+                'installation_uuid' => $this->resolveInstallationUuid($meta),
             ]));
         }
+    }
+
+    /**
+     * The client's own installation uuid, not a fresh one.
+     *
+     * Str::uuid() used to be called here unconditionally, and that quietly broke the only thing this
+     * column is for. The client generates its uuid once, keeps it in encrypted state, and sends it on
+     * every call - feature activations are keyed to it, and ConfigSyncController::buildFeatureCatalog()
+     * looks activations up by it. Minting a different one server-side leaves the installation row
+     * describing an installation that does not exist: on crm production the row said 1b4e468c while
+     * the client, its four feature activations and the catalogue lookup all said 39cdae01.
+     *
+     * Feature gating survived that because it never consults this row, which is exactly why it went
+     * unnoticed. What did not survive: the Installation Slots panel, revoke-by-installation from the
+     * admin page, and the uuid arm of FeatureLicenseController::resolveLicenseAppId().
+     *
+     * A generated uuid is kept as the last resort, since a row without one cannot be saved, and some
+     * heartbeats genuinely carry no client metadata.
+     */
+    protected function resolveInstallationUuid(array $meta): string
+    {
+        foreach ([$meta['installation_uuid'] ?? null, $meta['install_uuid'] ?? null] as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return (string) Str::uuid();
     }
 
     public function handleRevoked(UsageRevoked $event): void
@@ -136,7 +164,10 @@ class SyncUsageToInstallation
                 ?? $licenseCompany->licenseApps()->first();
 
             $installation = LicenseInstallation::create([
-                'installation_uuid'   => (string) Str::uuid(),
+                // The client's uuid where it sent one - see resolveInstallationUuid(). Both the
+                // metadata the heartbeat carries and the usage's own meta are searched, because
+                // which of the two holds it depends on how the client called in.
+                'installation_uuid'   => $this->resolveInstallationUuid(array_merge($rawUsageMeta, is_array($clientMeta) ? $clientMeta : [])),
                 'license_app_id'      => $licenseApp?->id,
                 'license_company_id'  => $licenseCompany->id,
                 'app_code'            => $appCode,
