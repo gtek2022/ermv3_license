@@ -28,6 +28,12 @@ use Illuminate\Console\Command;
  *   php artisan features:register-crm --app=crm --grant=procurement,finance,approval
  *   php artisan features:register-crm --app=crm --regenerate     # reissue every FLK
  *
+ * `--grant=all` is refused for an app_code that is not a -dev one unless --force is passed. See the
+ * guard in handle() for why: production was once entitled to fourteen of fifteen modules because
+ * that flag reached the wrong --app, and nothing about the result looked wrong.
+ *
+ * To see what a licence grants before and after: php artisan license:features-report --app=crm
+ *
  * Idempotent. Existing FLKs are kept unless --regenerate is passed, because reissuing one silently
  * would lock out an installation that had already activated it.
  */
@@ -36,7 +42,8 @@ class RegisterCrmFeatures extends Command
     protected $signature = 'features:register-crm
         {--app=crm : App code to register under (crm, crm-dev)}
         {--grant= : Entitle the licence to these features - "all", or a comma separated list}
-        {--regenerate : Force a fresh FLK even if one already exists}';
+        {--regenerate : Force a fresh FLK even if one already exists}
+        {--force : Required to grant "all" to a production app_code}';
 
     protected $description = 'Register the licensed crm modules with FLKs, and optionally grant them to that app\'s licence.';
 
@@ -103,6 +110,29 @@ class RegisterCrmFeatures extends Command
         $grant = trim((string) $this->option('grant'));
 
         if ($grant !== '') {
+            /*
+             * "all" against production needs saying twice.
+             *
+             * The dev invocation is `--app=crm-dev --grant=all` and the production one is
+             * `--app=crm --grant=procurement,finance,approval`. Those differ by four characters in
+             * the middle of a long line, and getting it wrong is silent: it entitles production to
+             * every module, the client reports them all licensed at the next sync, and nothing looks
+             * broken - which is exactly how crm production came to be entitled to fourteen of
+             * fifteen modules. Narrowing later is easy; noticing is the hard part.
+             *
+             * Only "all" is guarded. An explicit list is a considered statement of what a customer
+             * bought, and asking for confirmation on every one of those would train people to pass
+             * --force reflexively.
+             */
+            if ($grant === 'all' && ! str_ends_with($appCode, '-dev') && ! $this->option('force')) {
+                $this->newLine();
+                $this->error('Refusing to grant ALL features to "' . $appCode . '", which is not a -dev app code.');
+                $this->line('If that is genuinely intended, pass --force. If you meant the dev site, use --app=' . $appCode . '-dev.');
+                $this->line('To see what the licence grants today: php artisan license:features-report --app=' . $appCode);
+
+                return self::FAILURE;
+            }
+
             $this->newLine();
             $this->grant($appCode, $grant === 'all' ? $keys : array_map('trim', explode(',', $grant)), $keys);
         }
