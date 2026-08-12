@@ -69,8 +69,10 @@ class FeatureLicenceReport extends Command
         $entitlements = LicenseAppFeature::where('license_app_id', $licenceApp->id)->get()->keyBy('feature_key');
 
         $this->newLine();
-        $this->line('── licence #' . $licenceApp->id . '  company=' . $licenceApp->license_company_id
-            . '  status=' . $licenceApp->status . ' ──');
+        // ASCII only, deliberately: deploy.py prints this through a cp1252 console, and box-drawing
+        // characters crash it with a UnicodeEncodeError rather than just looking wrong.
+        $this->line('-- licence #' . $licenceApp->id . '  company=' . $licenceApp->license_company_id
+            . '  status=' . $licenceApp->status . ' --');
 
         /*
          * The rule that surprises people, so it is stated rather than implied: with no entitlement
