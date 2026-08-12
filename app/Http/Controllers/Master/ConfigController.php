@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LogAudit;
 use App\Models\MasterConfig;
 use App\Models\MasterConfigVersion;
+use App\Services\Licensing\HeartbeatPolicyResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -138,7 +139,14 @@ class ConfigController extends Controller
             'subject_label' => $config->config_key,
         ]);
 
-        return redirect()->route('master.configs.index')->with('success', 'Config updated.');
+        $mirrored = $this->mirrorAliases($config, $storedValue, $data['change_reason'] ?? null);
+
+        $message = 'Config updated.';
+        if ($mirrored) {
+            $message .= ' Also applied to the equivalent key: ' . implode(', ', $mirrored) . '.';
+        }
+
+        return redirect()->route('master.configs.index')->with('success', $message);
     }
 
     public function history(string $hash): View
@@ -168,6 +176,9 @@ class ConfigController extends Controller
             'Rollback to version #' . $version->id
         );
 
+        // A rollback that moved only one of a mirrored pair would put the drift straight back.
+        $this->mirrorAliases($config, $version->previous_value, 'Rollback to version #' . $version->id);
+
         return back()->with('success', 'Config rolled back.');
     }
 
@@ -182,6 +193,68 @@ class ConfigController extends Controller
         LogAudit::record('deleted', 'master_config', ['subject_type' => 'MasterConfig', 'subject_id' => $config->id, 'subject_label' => $config->config_key]);
         $config->delete();
         return redirect()->route('master.configs.index')->with('success', 'Config deleted.');
+    }
+
+    /**
+     * Copy a value across config keys that are two names for the same setting.
+     *
+     * The heartbeat interval exists twice in this table - `heartbeat_interval`, seeded at
+     * install, and `licensing.heartbeat_interval`, which is what the client config endpoint
+     * publishes. MasterConfig::get() matches keys literally, so those are two independent
+     * rows that different parts of the server read. Editing one and not the other is the
+     * trap this closes: the admin changes 6 hours to 1, the dashboard countdown updates,
+     * and every client carries on at the old cadence because it is served from the row that
+     * was not touched.
+     *
+     * HeartbeatPolicyResolver already resolves in a fixed order so a drifted pair still has
+     * a defined answer. This keeps them from drifting in the first place, which is the part
+     * an admin can actually see.
+     *
+     * Only rows that already exist are written. Creating the twin would silently add config
+     * an operator never asked for, and an absent row is already handled - the resolver just
+     * falls through to the next alias.
+     *
+     * @return array<int, string> keys that were also updated, for the flash message
+     */
+    private function mirrorAliases(MasterConfig $config, ?string $storedValue, ?string $reason): array
+    {
+        $group = collect(HeartbeatPolicyResolver::INTERVAL_ALIASES);
+
+        if (! $group->contains($config->config_key)) {
+            return [];
+        }
+
+        $updated = [];
+
+        foreach ($group->reject(fn ($key) => $key === $config->config_key) as $alias) {
+            $twin = MasterConfig::where('config_key', $alias)->first();
+            if (! $twin || $twin->config_value === $storedValue) {
+                continue;
+            }
+
+            $previous = $twin->is_encrypted ? '[encrypted]' : $twin->config_value;
+
+            $twin->update([
+                'config_value' => $storedValue,
+                'updated_by'   => auth()->id(),
+            ]);
+
+            MasterConfigVersion::snapshot(
+                'master_config', $twin->id, $twin->config_key,
+                $previous, $twin->is_encrypted ? '[encrypted]' : $storedValue,
+                trim(($reason ? $reason . ' — ' : '') . 'kept in sync with ' . $config->config_key)
+            );
+
+            LogAudit::record('updated', 'master_config', [
+                'subject_type'  => 'MasterConfig',
+                'subject_id'    => $twin->id,
+                'subject_label' => $twin->config_key,
+            ]);
+
+            $updated[] = $alias;
+        }
+
+        return $updated;
     }
 
     private function findOrFail(string $hash): MasterConfig

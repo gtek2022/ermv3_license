@@ -7,7 +7,6 @@ use App\Models\LicenseInstallation;
 use App\Models\LicenseLogsHeartbeat;
 use App\Models\LicenseLogsSuspicious;
 use App\Models\MasterCompany;
-use App\Models\MasterConfig;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -38,8 +37,10 @@ class DashboardController extends Controller
             'heartbeats_last_24h'   => LicenseLogsHeartbeat::where('heartbeat_at', '>=', now()->subDay())->count(),
         ];
 
-        // Heartbeat interval (config-driven) so dashboard can compute countdown
-        $heartbeatInterval = (int) MasterConfig::get('licensing.heartbeat_interval', 3600);
+        // Heartbeat interval (config-driven) so dashboard can compute countdown.
+        // Resolved centrally: the setting lives under two config keys and reading only
+        // one of them made this countdown disagree with what clients were actually told.
+        $heartbeatInterval = app(\App\Services\Licensing\HeartbeatPolicyResolver::class)->globalInterval();
 
         // Recent heartbeats with countdown to next expected ping.
         //

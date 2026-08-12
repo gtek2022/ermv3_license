@@ -212,8 +212,9 @@ class ConfigSyncController extends Controller
         // 1. Per-license override (paling spesifik)
         //    Disimpan oleh admin via /licenses/{hash}/policy form di
         //    license_companies.meta.policy.{heartbeat_tolerance, warning_days}
-        $licenseMeta = \App\Models\LicenseCompany::find($licenseId)?->meta ?? [];
-        $perLicense  = $licenseMeta['policy'] ?? [];
+        $licenseCompany = \App\Models\LicenseCompany::find($licenseId);
+        $licenseMeta    = $licenseCompany?->meta ?? [];
+        $perLicense     = $licenseMeta['policy'] ?? [];
 
         // 2. Global default dari master_configs
         $get = fn (string $key, mixed $default) => MasterConfig::get($key, $default);
@@ -228,7 +229,11 @@ class ConfigSyncController extends Controller
             ?? $get('warning_days_before_lockout', 3);
 
         return [
-            'heartbeat_interval'          => (int) $get('heartbeat_interval', 3600),
+            // Resolved centrally so this agrees with the heartbeat response and the admin
+            // screens. It read only the un-prefixed config row before, which is not the row
+            // the client-config endpoint publishes, so the two could differ.
+            'heartbeat_interval'          => app(\App\Services\Licensing\HeartbeatPolicyResolver::class)
+                                                ->intervalFor($licenseCompany),
             'heartbeat_retry_limit'       => (int) $tolerance,
             'warning_days_before_lockout' => (int) $warnDays,
             'grace_period_days'           => (int) $get('grace_period_days', 7),

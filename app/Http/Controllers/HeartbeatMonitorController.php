@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LicenseInstallation;
 use App\Models\LicenseLogsHeartbeat;
 use App\Models\LicenseLogsSuspicious;
-use App\Models\MasterConfig;
+use App\Services\Licensing\HeartbeatPolicyResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Vinkla\Hashids\Facades\Hashids;
@@ -42,17 +42,27 @@ class HeartbeatMonitorController extends Controller
 
     protected function report(): array
     {
-        $interval  = (int) MasterConfig::get('licensing.heartbeat_interval', 3600);
+        // One resolver for the whole report: it memoises the global config lookup, so
+        // asking it per installation costs nothing extra.
+        //
+        // The interval is resolved per installation rather than once globally because a
+        // licence may carry its own cadence. Judging a 6-hourly licence against a
+        // 1-hourly threshold would file it as late while it was doing exactly what the
+        // server told it to do.
+        $resolver  = app(HeartbeatPolicyResolver::class);
+        $global    = $resolver->globalInterval();
         $ttlDays   = (int) config('licensing.offline_token.ttl_days', 7);
-        $staleSecs = max(120, (int) ($interval * 1.5));
-        $ttlSecs   = max($staleSecs + 60, $ttlDays * 86400);
         $nowTs     = now()->getTimestamp();
 
         $installations = LicenseInstallation::with('licenseCompany.company')
             ->where('status', 'active')
             ->orderByDesc('last_heartbeat_at')
             ->get()
-            ->map(function ($i) use ($nowTs, $interval, $staleSecs, $ttlSecs) {
+            ->map(function ($i) use ($nowTs, $ttlDays, $resolver) {
+                $interval  = $resolver->intervalFor($i->licenseCompany);
+                $staleSecs = max(120, (int) ($interval * 1.5));
+                $ttlSecs   = max($staleSecs + 60, $ttlDays * 86400);
+
                 $last = $i->last_heartbeat_at;
                 $age  = $last ? max(0, $nowTs - $last->getTimestamp()) : null;
 
@@ -76,6 +86,7 @@ class HeartbeatMonitorController extends Controller
                     'age_seconds'    => $age,
                     'days_since'     => $age !== null ? (int) floor($age / 86400) : null,
                     'next_in_secs'   => $nextInSecs,
+                    'interval_secs'  => $interval,
                     'health'         => $health,
                     'violation'      => (int) ($i->violation_counter ?? 0),
                 ];
@@ -103,7 +114,10 @@ class HeartbeatMonitorController extends Controller
 
         return [
             'now'                 => now()->toIso8601String(),
-            'interval_seconds'    => $interval,
+
+            // The global default. Individual rows carry their own `interval_secs`, which
+            // differs whenever a licence has a per-licence override.
+            'interval_seconds'    => $global,
             'ttl_days'            => $ttlDays,
             'counts'              => $counts,
             'heartbeats_24h_ok'   => $hb24Ok,
@@ -208,12 +222,14 @@ class HeartbeatMonitorController extends Controller
      */
     protected function diagnoseInstallation(LicenseInstallation $inst): array
     {
-        $interval  = (int) MasterConfig::get('licensing.heartbeat_interval', 3600);
+        $company   = $inst->licenseCompany;
+
+        // Judge this install against the cadence it was actually given, override included.
+        $interval  = app(HeartbeatPolicyResolver::class)->intervalFor($company);
         $ttlDays   = (int) config('licensing.offline_token.ttl_days', 7);
         $staleSecs = max(120, (int) ($interval * 1.5));
         $ttlSecs   = max($staleSecs + 60, $ttlDays * 86400);
 
-        $company   = $inst->licenseCompany;
         $last      = $inst->last_heartbeat_at;
         $age       = $last ? max(0, now()->getTimestamp() - $last->getTimestamp()) : null;
         $health    = $this->classify($age, $staleSecs, $ttlSecs);

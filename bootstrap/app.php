@@ -15,8 +15,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Append a terminate-only middleware that logs licensing API errors
         // (4xx with security-relevant codes) into license_logs_suspicious so
         // admins can review attack attempts via the dashboard.
+        //
+        // AttachHeartbeatPolicy adds the heartbeat cadence to a successful
+        // /heartbeat response. It lives here rather than on the route because the
+        // route belongs to the package - see the class docblock. It is additive
+        // and self-silencing, so it cannot turn a good heartbeat into a bad one.
         $middleware->api(append: [
             \App\Http\Middleware\RecordSuspiciousLicensingEvent::class,
+            \App\Http\Middleware\AttachHeartbeatPolicy::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

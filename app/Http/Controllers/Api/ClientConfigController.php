@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MasterConfig;
+use App\Services\Licensing\HeartbeatPolicyResolver;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -33,6 +34,12 @@ class ClientConfigController extends Controller
         'licensing.issuer',
         'licensing.heartbeat_enabled',
         'licensing.heartbeat_interval',
+
+        // The un-prefixed twin of the key above. It is covered here so that editing
+        // either row moves the version hash - otherwise an admin who edited the bare
+        // key changed the value the resolver might return while leaving the hash
+        // untouched, and no client would ever refetch.
+        'heartbeat_interval',
         'licensing.heartbeat_retry_limit',
         'licensing.warning_days',
         'licensing.grace_period_days',
@@ -81,7 +88,12 @@ class ClientConfigController extends Controller
 
             // Heartbeat
             'heartbeat_enabled'     => (bool) $get('licensing.heartbeat_enabled', true),
-            'heartbeat_interval'    => (int)  $get('licensing.heartbeat_interval', 3600),
+
+            // Resolved rather than read straight from one row, because the same setting
+            // exists under two config keys and this endpoint used to see only one of them.
+            // Not licence-scoped: this endpoint takes no license_key, so a per-licence
+            // override cannot be honoured here. That is what the heartbeat response is for.
+            'heartbeat_interval'    => app(HeartbeatPolicyResolver::class)->globalInterval(),
             'heartbeat_retry_limit' => (int)  $get('licensing.heartbeat_retry_limit', 3),
             'warning_days'          => (int)  $get('licensing.warning_days', 3),
             'grace_period_days'     => (int)  $get('licensing.grace_period_days', 7),
