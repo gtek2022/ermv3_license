@@ -262,15 +262,23 @@ class ConfigSyncController extends Controller
      *     requires_license: bool,    // true = needs FLK-XXXX key
      *     activated: bool,           // true = this installation has a live feature licence
      *     expires_at: string|null,   // ISO-8601 deadline, null = perpetual
-     *     days_remaining: int|null,  // whole days left, null = perpetual, 0 = lapsed
+     *     days_remaining: int|null,  // legacy, rounds a sub-day term up to 1
+     *     seconds_remaining: int|null, // exact time left, null = perpetual, 0 = lapsed
+     *     remaining_label: string|null, // "45 menit lagi", "30 hari lagi"
+     *     term_minutes: int|null,    // the term this FLK grants, null = perpetual
      *     expired: bool,             // the term ran out (activated is false in that case too)
      *   }
      * }
      *
      * `activated` is the field clients gate on, and an activation whose term has run out does not
-     * count towards it - that is what makes a lapsed FLK re-lock the module. The three validity
-     * fields are carried alongside so a client can say *why* it locked, and can warn while the term
-     * is still running rather than only reacting once it is gone.
+     * count towards it - that is what makes a lapsed FLK re-lock the module. The validity fields are
+     * carried alongside so a client can say *why* it locked, and can warn while the term is still
+     * running rather than only reacting once it is gone.
+     *
+     * `days_remaining` is kept only so clients that have not been updated keep working. It cannot
+     * express a term shorter than a day - a fifteen-minute trial rounds up to 1 - so anything new
+     * should read `seconds_remaining`. `expires_at` remains the field enforcement is based on, and
+     * has always been a timestamp, so short terms were already enforced correctly before this.
      */
     private function buildFeatureCatalog(string $appCode, ?string $installationUuid): array
     {
@@ -299,10 +307,13 @@ class ConfigSyncController extends Controller
                         'category'         => $f->category,
                         'is_active'        => $f->is_active,
                         'requires_license' => false,
-                        'activated'        => true,
-                        'expires_at'       => null,
-                        'days_remaining'   => null,
-                        'expired'          => false,
+                        'activated'         => true,
+                        'expires_at'        => null,
+                        'days_remaining'    => null,
+                        'seconds_remaining' => null,
+                        'remaining_label'   => null,
+                        'term_minutes'      => null,
+                        'expired'           => false,
                     ],
                 ];
             }
@@ -315,10 +326,16 @@ class ConfigSyncController extends Controller
                     'requires_license' => true,
                     // Live means active by status AND inside its term. No activation at all and a
                     // lapsed one both land on false here; `expired` is what tells them apart.
-                    'activated'        => (bool) $activation?->isCurrentlyActive(),
-                    'expires_at'       => $activation?->expires_at?->toIso8601String(),
-                    'days_remaining'   => $activation?->daysRemaining(),
-                    'expired'          => (bool) $activation?->isExpired(),
+                    'activated'         => (bool) $activation?->isCurrentlyActive(),
+                    'expires_at'        => $activation?->expires_at?->toIso8601String(),
+                    'days_remaining'    => $activation?->daysRemaining(),
+                    'seconds_remaining' => $activation?->secondsRemaining(),
+                    'remaining_label'   => $activation?->remainingLabel(),
+
+                    // The term the key grants, independent of any activation. Lets a client show
+                    // what it would get before redeeming, and show "15 menit" on a locked module.
+                    'term_minutes'      => $f->durationMinutes(),
+                    'expired'           => (bool) $activation?->isExpired(),
                 ],
             ];
         })->toArray();

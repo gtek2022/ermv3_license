@@ -37,9 +37,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('license:sync-public-key')->daily();
         // Mark feature activations whose validity period has ended. Housekeeping only - clients lock
         // on the deadline itself, read from expires_at, so this keeps the status column honest for
-        // reporting rather than being what enforces anything. Hourly so the admin screens do not sit
-        // a whole day behind reality.
-        $schedule->command('license:feature-expire')->hourly()->withoutOverlapping();
+        // reporting rather than being what enforces anything.
+        //
+        // Every minute rather than hourly since terms can now be minutes long. An hourly sweep would
+        // leave a fifteen-minute trial showing as 'active' for most of its life again after it had
+        // already stopped working, which is the exact confusion this command exists to avoid. The
+        // command only touches rows whose deadline has already passed, so a run with nothing to do
+        // costs one indexed query.
+        $schedule->command('license:feature-expire')->everyMinute()->withoutOverlapping();
         // Trim the heartbeat log. It is the one table here that grows without bound - one row per
         // install per heartbeat, forever - and nothing removed any of them until this.
         $schedule->command('license:prune-logs')->dailyAt('03:20')->withoutOverlapping();

@@ -133,16 +133,12 @@ class AppController extends Controller
             // Lifetime atau berjangka, dipilih eksplisit. Kolom kosong tidak dipakai sebagai penanda
             // lifetime di form: admin tidak bisa membedakan "sengaja permanen" dari "lupa mengisi",
             // dan salah satunya menjual modul selamanya tanpa ada yang menyadarinya.
-            'license_validity_mode' => 'nullable|in:lifetime,term',
-            // Dibatasi 3650 hari (10 tahun): di atas itu praktis lifetime, dan angka sebesar itu
-            // hampir selalu salah ketik. Wajib kalau modenya berjangka.
-            'license_duration_days' => 'nullable|integer|min:1|max:3650|required_if:license_validity_mode,term',
-        ], [
-            'license_duration_days.required_if' => 'Isi jumlah hari, atau pilih Lifetime.',
+        ] + $this->durationRules(), [
+            'license_duration_amount.required_if' => 'Isi lama masa aktif, atau pilih Lifetime.',
         ]);
 
         $requiresLicense = $request->boolean('requires_license');
-        $durationDays = $this->resolveDurationDays($data);
+        $durationMinutes = $this->durationMinutesOrFail($data);
 
         $feature = MasterAppFeature::create([
             'app_code'         => $app->code,
@@ -154,7 +150,14 @@ class AppController extends Controller
             'requires_license' => $requiresLicense,
             // Masa aktif hanya berarti untuk fitur berlisensi: fitur gratis tidak pernah diaktivasi,
             // jadi tidak ada saat mulai untuk menghitung tenggatnya.
-            'license_duration_days' => $requiresLicense ? $durationDays : null,
+            //
+            // Kolom hari ditulis sebagai cermin turunan, bukan sumber kedua - lihat
+            // MasterAppFeature::setDurationMinutes(). Di sini ikut ditulis langsung karena create()
+            // tidak bisa memakai setter itu.
+            'license_duration_minutes' => $requiresLicense ? $durationMinutes : null,
+            'license_duration_days'    => ($requiresLicense && $durationMinutes !== null)
+                                            ? max(1, (int) ceil($durationMinutes / 1440))
+                                            : null,
             'created_by'       => auth()->id(),
         ]);
 
@@ -188,18 +191,15 @@ class AppController extends Controller
         $this->findOrFail($hash);
         $feature = MasterAppFeature::findOrFail($featureId);
 
-        $data = $request->validate([
-            'license_validity_mode' => 'nullable|in:lifetime,term',
-            'license_duration_days' => 'nullable|integer|min:1|max:3650|required_if:license_validity_mode,term',
-        ], [
-            'license_duration_days.required_if' => 'Isi jumlah hari, atau pilih Lifetime.',
+        $data = $request->validate($this->durationRules(), [
+            'license_duration_amount.required_if' => 'Isi lama masa aktif, atau pilih Lifetime.',
         ]);
 
         if (! $feature->requires_license) {
             return back()->withErrors(['error' => 'Fitur gratis tidak punya masa aktif.']);
         }
 
-        $feature->update(['license_duration_days' => $this->resolveDurationDays($data)]);
+        $feature->setDurationMinutes($this->durationMinutesOrFail($data));
 
         $liveCount = LicenseFeatureActivation::where('feature_key', $feature->feature_key)
             ->where('app_code', $feature->app_code)
@@ -208,7 +208,7 @@ class AppController extends Controller
 
         $message = $feature->isLifetime()
             ? 'Masa aktif "' . $feature->name . '" sekarang Lifetime - aktivasi baru tidak akan kedaluwarsa.'
-            : 'Masa aktif "' . $feature->name . '" sekarang ' . $feature->license_duration_days . ' hari.';
+            : 'Masa aktif "' . $feature->name . '" sekarang ' . $feature->validityLabel() . '.';
 
         if ($liveCount > 0) {
             $message .= ' ' . $liveCount . ' aktivasi yang sedang berjalan tetap memakai tenggat lamanya;'
@@ -346,9 +346,13 @@ class AppController extends Controller
      * Kalau mode tidak dikirim sama sekali (permintaan lama, atau form tanpa radio), jatuh kembali ke
      * "ada angka berarti berjangka" supaya pemanggil lama tetap bekerja.
      *
+     * Satuannya menit sejak masa aktif bisa lebih pendek dari sehari. `license_duration_unit`
+     * menentukan cara membaca angkanya; kalau tidak dikirim, dibaca sebagai hari supaya form dan
+     * pemanggil lama yang hanya tahu hari tetap berperilaku sama.
+     *
      * @param  array<string, mixed>  $data
      */
-    private function resolveDurationDays(array $data): ?int
+    private function resolveDurationMinutes(array $data): ?int
     {
         $mode = $data['license_validity_mode'] ?? null;
 
@@ -356,9 +360,56 @@ class AppController extends Controller
             return null;
         }
 
-        $days = $data['license_duration_days'] ?? null;
+        $amount = $data['license_duration_amount'] ?? $data['license_duration_days'] ?? null;
 
-        return $days !== null ? (int) $days : null;
+        if ($amount === null || (int) $amount <= 0) {
+            return null;
+        }
+
+        // Tanpa satuan berarti permintaan gaya lama: angkanya hari.
+        $unit = $data['license_duration_unit']
+            ?? (isset($data['license_duration_amount']) ? 'days' : 'days');
+
+        return MasterAppFeature::minutesFrom((int) $amount, $unit);
+    }
+
+    /**
+     * Aturan validasi masa aktif, dipakai form tambah fitur dan form ubah masa aktif.
+     *
+     * Batas atasnya per satuan, bukan satu angka: 3650 hari itu wajar, 3650 menit juga wajar, tapi
+     * satu batas untuk keduanya akan menolak salah satunya. Jadi batas dalam menit diperiksa setelah
+     * konversi, di validasi tambahan di bawah.
+     *
+     * @return array<string, mixed>
+     */
+    private function durationRules(): array
+    {
+        return [
+            'license_validity_mode'   => 'nullable|in:lifetime,term',
+            'license_duration_unit'   => 'nullable|in:' . implode(',', array_keys(MasterAppFeature::DURATION_UNITS)),
+            'license_duration_amount' => 'nullable|integer|min:1|required_if:license_validity_mode,term',
+            // Dipertahankan supaya permintaan lama yang mengirim jumlah hari tetap diterima.
+            'license_duration_days'   => 'nullable|integer|min:1|max:3650',
+        ];
+    }
+
+    /**
+     * Terjemahkan masa aktif ke menit, dan tolak yang di luar batas.
+     *
+     * Pemeriksaan batas terjadi di sini - setelah konversi - karena batas yang berarti hanyalah
+     * totalnya. 10 tahun tetap 10 tahun, ditulis sebagai hari maupun sebagai menit.
+     */
+    private function durationMinutesOrFail(array $data): ?int
+    {
+        $minutes = $this->resolveDurationMinutes($data);
+
+        if ($minutes !== null && $minutes > MasterAppFeature::MAX_DURATION_MINUTES) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'license_duration_amount' => 'Masa aktif maksimal 10 tahun. Di atas itu pilih Lifetime.',
+            ]);
+        }
+
+        return $minutes;
     }
 
     public function toggleFeature(string $hash, int $featureId): RedirectResponse

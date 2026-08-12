@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         @if($feat->isLifetime())
                                             <span class="badge badge-blue" style="font-size:.58rem;">∞ Lifetime</span>
                                         @else
-                                            <span class="badge badge-secondary" style="font-size:.58rem;">{{ $feat->license_duration_days }} hari</span>
+                                            <span class="badge badge-secondary" style="font-size:.58rem;">{{ $feat->validityLabel() }}</span>
                                         @endif
                                     </div>
                                     <form method="POST" action="{{ route('master.apps.features.duration', [$masterAppHash, $feat->id]) }}"
@@ -569,12 +569,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <label style="display:flex;align-items:center;gap:.12rem;font-size:.6rem;cursor:pointer;">
                                             <input type="radio" name="license_validity_mode" value="term"
                                                 @checked(! $feat->isLifetime()) data-validity-radio
-                                                style="accent-color:#1a3a6b;">hari
+                                                style="accent-color:#1a3a6b;">jangka
                                         </label>
-                                        <input type="number" name="license_duration_days" min="1" max="3650"
-                                            value="{{ $feat->license_duration_days }}" placeholder="30"
+                                        @php $vForm = $feat->durationForForm(); @endphp
+                                        <input type="number" name="license_duration_amount" min="1"
+                                            value="{{ $vForm['amount'] }}" placeholder="30"
                                             @disabled($feat->isLifetime()) data-validity-days
                                             style="width:48px;padding:.12rem .25rem;font-size:.65rem;border:1px solid #cbd5e1;border-radius:4px;">
+                                        <select name="license_duration_unit"
+                                            @disabled($feat->isLifetime()) data-validity-unit
+                                            style="padding:.12rem .18rem;font-size:.6rem;border:1px solid #cbd5e1;border-radius:4px;">
+                                            <option value="minutes" @selected($vForm['unit'] === 'minutes')>menit</option>
+                                            <option value="hours" @selected($vForm['unit'] === 'hours')>jam</option>
+                                            <option value="days" @selected($vForm['unit'] === 'days')>hari</option>
+                                        </select>
                                         <button type="submit" class="btn btn-secondary btn-sm"
                                             style="font-size:.58rem;padding:.1rem .3rem;">Simpan</button>
                                     </form>
@@ -671,10 +679,19 @@ document.addEventListener('DOMContentLoaded', function () {
         var radios = scope.querySelectorAll('[data-validity-radio]');
         if (!radios.length) return;
 
+        // Satuan ikut dinonaktifkan, tapi TIDAK ikut dikosongkan atau difokuskan. Mengosongkan
+        // <select> membuat pilihannya hilang, dan kalau di-enable lagi satuannya terkirim kosong lalu
+        // diam-diam dibaca sebagai "hari" - jadi admin yang memilih "menit" bisa mendapat masa aktif
+        // dalam hari tanpa peringatan. Fokus tetap ke kolom angka, karena itu yang perlu diisi.
+        var unit = scope.querySelector('[data-validity-unit]');
+
         function sync(fromUser) {
             var term = scope.querySelector('[data-validity-radio][value="term"]');
             var isTerm = term && term.checked;
             days.disabled = !isTerm;
+            if (unit) {
+                unit.disabled = !isTerm;
+            }
             if (!isTerm) {
                 days.value = '';
             } else if (fromUser) {

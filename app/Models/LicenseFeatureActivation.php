@@ -84,12 +84,67 @@ class LicenseFeatureActivation extends Model
         return (int) ceil(now()->diffInHours($this->expires_at) / 24);
     }
 
-    /** Term, deadline and days left in the shape the client and the admin screens read. */
+    /**
+     * Seconds left, or null for a perpetual activation. Never negative.
+     *
+     * This is the honest number now that terms can be minutes rather than whole days.
+     * daysRemaining() cannot express one: a fifteen-minute activation rounds up to "1 day", which
+     * overstates it by ninety-five times. That rounding was the right call while a day was the
+     * smallest term anyone could buy, and is the wrong one now.
+     */
+    public function secondsRemaining(): ?int
+    {
+        if ($this->expires_at === null) {
+            return null;
+        }
+
+        if ($this->expires_at->isPast()) {
+            return 0;
+        }
+
+        return (int) now()->diffInSeconds($this->expires_at);
+    }
+
+    /**
+     * Remaining term as a phrase, at a resolution that suits how much is left.
+     *
+     * Deliberately coarser the further away the deadline is: nobody needs the minutes on a
+     * twenty-nine-day licence, and everybody needs them on a fifteen-minute trial.
+     */
+    public function remainingLabel(): ?string
+    {
+        $seconds = $this->secondsRemaining();
+
+        if ($seconds === null) {
+            return null;
+        }
+
+        if ($seconds <= 0) {
+            return 'habis';
+        }
+
+        if ($seconds < 60) {
+            return $seconds . ' detik lagi';
+        }
+
+        return MasterAppFeature::humaniseMinutes(intdiv($seconds, 60)) . ' lagi';
+    }
+
+    /** Term, deadline and time left in the shape the client and the admin screens read. */
     public function validityPayload(): array
     {
         return [
             'expires_at'     => $this->expires_at?->toIso8601String(),
+
+            // Kept because existing clients read it, and a client that has not been updated should
+            // keep working. It overstates any sub-day term - see secondsRemaining().
             'days_remaining' => $this->daysRemaining(),
+
+            // What an updated client should prefer. Seconds rather than minutes so a short trial can
+            // be displayed and counted down without the last minute collapsing to zero.
+            'seconds_remaining' => $this->secondsRemaining(),
+            'remaining_label'   => $this->remainingLabel(),
+
             'expired'        => $this->isExpired(),
         ];
     }

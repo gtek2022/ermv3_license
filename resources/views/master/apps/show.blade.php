@@ -113,13 +113,22 @@
                                     @checked($vMode === 'term') data-validity-radio style="accent-color:#1a3a6b;">
                                 Berjangka
                             </label>
-                            <input type="number" name="license_duration_days" min="1" max="3650"
-                                class="form-control @error('license_duration_days') is-invalid @enderror"
-                                placeholder="hari" value="{{ old('license_duration_days') }}"
+                            {{-- Jumlah + satuan. Satuan menit dipakai untuk demo dan trial singkat;
+                                 sebelumnya masa aktif terpendek yang bisa dibuat adalah 1 hari. --}}
+                            <input type="number" name="license_duration_amount" min="1"
+                                class="form-control @error('license_duration_amount') is-invalid @enderror"
+                                placeholder="jumlah" value="{{ old('license_duration_amount') }}"
                                 @disabled($vMode !== 'term') data-validity-days
                                 style="width:64px;padding:.35rem .4rem;font-size:.75rem;">
+                            <select name="license_duration_unit"
+                                @disabled($vMode !== 'term') data-validity-unit
+                                style="padding:.35rem .4rem;font-size:.75rem;border:1px solid #cbd5e1;border-radius:4px;">
+                                <option value="minutes" @selected(old('license_duration_unit') === 'minutes')>menit</option>
+                                <option value="hours" @selected(old('license_duration_unit') === 'hours')>jam</option>
+                                <option value="days" @selected(old('license_duration_unit', 'days') === 'days')>hari</option>
+                            </select>
                         </div>
-                        @error('license_duration_days')
+                        @error('license_duration_amount')
                             <div style="font-size:.62rem;color:#b91c1c;margin-top:.2rem;">{{ $message }}</div>
                         @enderror
                     </div>
@@ -153,10 +162,20 @@
 
                         // fromUser: hanya pindahkan kursor kalau admin memang baru mengklik Berjangka.
                         // Saat load awal, memanggil focus() akan merebut fokus halaman tanpa diminta.
+                        // Satuan ikut dinonaktifkan, tapi TIDAK ikut dikosongkan atau difokuskan.
+                        // Mengosongkan <select> membuat pilihannya hilang, dan kalau di-enable lagi
+                        // satuannya terkirim kosong lalu diam-diam dibaca sebagai "hari" - jadi admin
+                        // yang memilih "menit" bisa mendapat masa aktif dalam hari tanpa peringatan.
+                        // Fokus tetap ke kolom angka, karena itu yang perlu diisi.
+                        var unit = scope.querySelector('[data-validity-unit]');
+
                         function sync(fromUser) {
                             var term = scope.querySelector('[data-validity-radio][value="term"]');
                             var isTerm = term && term.checked;
                             days.disabled = !isTerm;
+                            if (unit) {
+                                unit.disabled = !isTerm;
+                            }
                             if (!isTerm) {
                                 days.value = '';
                             } else if (fromUser) {
@@ -316,7 +335,7 @@
                                             <span class="badge badge-blue" style="font-size:.6rem;">∞ Lifetime</span>
                                         @else
                                             <span class="badge badge-secondary" style="font-size:.6rem;">
-                                                {{ $feat->license_duration_days }} hari
+                                                {{ $feat->validityLabel() }}
                                             </span>
                                         @endif
                                     </div>
@@ -335,12 +354,22 @@
                                         <label style="display:flex;align-items:center;gap:.15rem;font-size:.62rem;cursor:pointer;">
                                             <input type="radio" name="license_validity_mode" value="term"
                                                 @checked(! $feat->isLifetime()) data-validity-radio
-                                                style="accent-color:#1a3a6b;">hari
+                                                style="accent-color:#1a3a6b;">jangka
                                         </label>
-                                        <input type="number" name="license_duration_days" min="1" max="3650"
-                                            value="{{ $feat->license_duration_days }}" placeholder="30"
+                                        {{-- Ditampilkan kembali dalam satuan terbesar yang membagi
+                                             habis, supaya "30 hari" tidak muncul sebagai 43200 menit. --}}
+                                        @php $vForm = $feat->durationForForm(); @endphp
+                                        <input type="number" name="license_duration_amount" min="1"
+                                            value="{{ $vForm['amount'] }}" placeholder="30"
                                             @disabled($feat->isLifetime()) data-validity-days
                                             style="width:52px;padding:.15rem .3rem;font-size:.68rem;border:1px solid #cbd5e1;border-radius:4px;">
+                                        <select name="license_duration_unit"
+                                            @disabled($feat->isLifetime()) data-validity-unit
+                                            style="padding:.15rem .2rem;font-size:.62rem;border:1px solid #cbd5e1;border-radius:4px;">
+                                            <option value="minutes" @selected($vForm['unit'] === 'minutes')>menit</option>
+                                            <option value="hours" @selected($vForm['unit'] === 'hours')>jam</option>
+                                            <option value="days" @selected($vForm['unit'] === 'days')>hari</option>
+                                        </select>
                                         <button type="submit" class="btn btn-secondary btn-sm"
                                             style="font-size:.6rem;padding:.12rem .35rem;">Simpan</button>
                                     </form>
