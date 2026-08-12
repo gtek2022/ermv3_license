@@ -94,15 +94,26 @@ class SyncUsageToInstallation
      * A generated uuid is kept as the last resort, since a row without one cannot be saved, and some
      * heartbeats genuinely carry no client metadata.
      */
-    protected function resolveInstallationUuid(array $meta): string
+    protected function resolveInstallationUuid(array $meta, ?string $fallback = ''): ?string
     {
-        foreach ([$meta['installation_uuid'] ?? null, $meta['install_uuid'] ?? null] as $candidate) {
+        // Nested client_data.meta as well as the top level, because which one carries the uuid
+        // depends on whether this came from an activation or a heartbeat.
+        $nested = [];
+        if (isset($meta['client_data']) && is_array($meta['client_data'])) {
+            $nested = is_array($meta['client_data']['meta'] ?? null) ? $meta['client_data']['meta'] : [];
+        }
+
+        $haystack = array_merge($nested, $meta);
+
+        foreach ([$haystack['installation_uuid'] ?? null, $haystack['install_uuid'] ?? null] as $candidate) {
             if (is_string($candidate) && trim($candidate) !== '') {
                 return trim($candidate);
             }
         }
 
-        return (string) Str::uuid();
+        // '' (the default) means "mint one"; null means "tell me you found nothing", which the
+        // repair path above needs so it can leave an existing row alone.
+        return $fallback === '' ? (string) Str::uuid() : $fallback;
     }
 
     public function handleRevoked(UsageRevoked $event): void
@@ -188,6 +199,30 @@ class SyncUsageToInstallation
                 'last_heartbeat_at' => $usage->last_seen_at ?? now(),
                 'status'            => $installation->status === 'revoked' ? 'revoked' : 'active',
             ];
+
+            /*
+             * Adopt the client's uuid if the row is carrying one we invented.
+             *
+             * Creating the row cannot always get this right: this listener runs from the
+             * LicenseUsage "updated" hook, and on a heartbeat the fresh client metadata is not
+             * necessarily on $usage->meta yet, so resolveInstallationUuid() falls through to a
+             * generated value. The result was a row that never matched the installation it
+             * described - and since the uuid is what feature activations are keyed to, that row was
+             * useless for the admin panel and for revoke-by-installation.
+             *
+             * Repairing it here rather than at creation means it is self-healing: whatever the row
+             * started with, the next heartbeat that carries a client uuid corrects it. The
+             * fingerprint identifies the row, so adopting the uuid cannot move it to a different
+             * machine.
+             */
+            $reported = $this->resolveInstallationUuid(
+                array_merge($rawUsageMeta, is_array($clientMeta) ? $clientMeta : []),
+                null
+            );
+
+            if ($reported !== null && $reported !== $installation->installation_uuid) {
+                $updates['installation_uuid'] = $reported;
+            }
 
             // Kalau app_code berubah (migrasi env, e.g. pds → pds-dev), ikut sync
             // ke installation row + license_app_id supaya dashboard akurat.
